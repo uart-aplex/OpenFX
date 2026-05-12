@@ -21,14 +21,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.os.Build
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import com.openfx.core.sync.DeviceInfo
 import com.openfx.core.sync.DeviceType
 import com.openfx.core.sync.PairingMethod
+import com.openfx.core.sync.http.LanDeviceScanner
+import com.openfx.core.sync.http.OpenFxDevice
+import com.openfx.core.sync.http.OpenFxHttpReceiver
 import kotlin.math.cos
 import kotlin.math.sin
+import java.io.File
 
 // ===== 裝置配對主畫面 =====
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceScreen() {
@@ -37,18 +44,36 @@ fun DeviceScreen() {
     var showPairingDialog by remember { mutableStateOf(false) }
     var selectedDevice by remember { mutableStateOf<DeviceInfo?>(null) }
 
-    val nearbyDevices = remember {
-        listOf(
-            DeviceInfo("tv-1", "客廳 Android TV", DeviceType.TV, "192.168.1.120", isPaired = true, isOnline = true, lastSeen = System.currentTimeMillis()),
-            DeviceInfo("tab-1", "Galaxy Tab S9", DeviceType.TABLET, "192.168.1.118", isPaired = false, isOnline = true),
-            DeviceInfo("phone-1", "Pixel 8 Pro", DeviceType.PHONE, "192.168.1.112", isPaired = false, isOnline = true),
+    var receiver by remember { mutableStateOf<OpenFxHttpReceiver?>(null) }
+    var isReceiving by remember { mutableStateOf(false) }
+    var localIp by remember { mutableStateOf<String?>(null) }
+    var statusText by remember { mutableStateOf("尚未啟動") }
+
+    var isScanning by remember { mutableStateOf(false) }
+    var scannedDevices by remember { mutableStateOf<List<OpenFxDevice>>(emptyList()) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            receiver?.stop()
+        }
+    }
+
+    val nearbyDevices = scannedDevices.map { device ->
+        DeviceInfo(
+            id = device.ip,
+            name = device.deviceName,
+            type = DeviceType.UNKNOWN,
+            ipAddress = device.ip,
+            isPaired = true,
+            isOnline = true,
+            lastSeen = System.currentTimeMillis()
         )
     }
 
     val pairedDevices = remember {
         listOf(
             DeviceInfo("tv-1", "客廳 Android TV", DeviceType.TV, "192.168.1.120", isPaired = true, isOnline = true, lastSeen = System.currentTimeMillis()),
-            DeviceInfo("tv-2", "臥室 Mi Box", DeviceType.TV, "192.168.1.125", isPaired = true, isOnline = false, lastSeen = System.currentTimeMillis() - 172800000),
+            DeviceInfo("tv-2", "臥室 Mi Box", DeviceType.TV, "192.168.1.126", isPaired = true, isOnline = false, lastSeen = System.currentTimeMillis() - 172800000),
         )
     }
 
@@ -60,6 +85,104 @@ fun DeviceScreen() {
             }
             Tab(selected = currentTab == 1, onClick = { currentTab = 1 }) {
                 Text("已配對", modifier = Modifier.padding(vertical = 12.dp))
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        val saveDir = java.io.File(
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                            "OpenFX"
+                        )
+
+                        val receiverInstance = OpenFxHttpReceiver(
+                            deviceName = Build.MODEL ?: "OpenFX Device",
+                            saveDir = saveDir,
+                            port = 8989
+                        )
+
+                        receiverInstance.start()
+                        receiver = receiverInstance
+                        isReceiving = true
+                        localIp = LanDeviceScanner.getLocalIpAddress()
+                        statusText = "接收端已啟動，等待檔案..."
+                    }
+                ) {
+                    Text("我要接收")
+                }
+
+                Button(
+                    modifier = Modifier.weight(1f),
+                    enabled = !isScanning,
+                    onClick = {
+                        // 切換到發送模式時，停止接收模式
+                        receiver?.stop()
+                        receiver = null
+                        isReceiving = false
+                        localIp = null
+
+                        isScanning = true
+                        val myIp = LanDeviceScanner.getLocalIpAddress()
+                        statusText = "本機 IP：$myIp，掃描附近 OpenFX 裝置中..."
+
+                        Thread {
+                            val result = LanDeviceScanner.scanSameSubnet()
+
+                            Handler(Looper.getMainLooper()).post {
+                                scannedDevices = result
+                                isScanning = false
+                                statusText = "本機 IP：$myIp，找到 ${result.size} 個 OpenFX 裝置"
+                                currentTab = 0
+                            }
+                        }.start()
+                    }
+                ) {
+                    Text(if (isScanning) "掃描中..." else "我要發送 / 掃描")
+                }
+            }
+
+            Text(
+                text = statusText,
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isReceiving) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text("接收模式已啟動", fontWeight = FontWeight.Medium)
+                        Text("本機 IP：${localIp ?: "取得中"}", fontSize = 12.sp)
+                        Text("Port：8989", fontSize = 12.sp)
+                        Text("儲存位置：Download/OpenFX", fontSize = 12.sp)
+
+                        Spacer(Modifier.height(4.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                receiver?.stop()
+                                receiver = null
+                                isReceiving = false
+                                statusText = "接收端已停止"
+                            }
+                        ) {
+                            Text("停止接收")
+                        }
+                    }
+                }
             }
         }
 
@@ -264,7 +387,8 @@ fun DeviceListItem(device: DeviceInfo, onClick: () -> Unit) {
         headlineContent = { Text(device.name) },
         supportingContent = {
             Text(
-                "${device.ipAddress} · Wi-Fi Direct",
+//                "${device.ipAddress} · Wi-Fi Direct",
+                "${device.ipAddress} · HTTP LAN",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -437,13 +561,13 @@ fun DeviceControlSheet(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ControlButton(
                     icon = Icons.Default.Upload,
-                    label = "傳檔到 TV",
+                    label = "傳送檔案",
                     modifier = Modifier.weight(1f),
                     onClick = { /* TODO */ }
                 )
                 ControlButton(
                     icon = Icons.Default.Download,
-                    label = "從 TV 下載",
+                    label = "接收檔案",
                     modifier = Modifier.weight(1f),
                     onClick = { /* TODO */ }
                 )
@@ -452,13 +576,13 @@ fun DeviceControlSheet(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ControlButton(
                     icon = Icons.Default.Folder,
-                    label = "瀏覽 TV 檔案",
+                    label = "瀏覽對方檔案",
                     modifier = Modifier.weight(1f),
                     onClick = { /* TODO */ }
                 )
                 ControlButton(
                     icon = Icons.Default.PlayArrow,
-                    label = "在 TV 播放",
+                    label = "遠端播放",
                     modifier = Modifier.weight(1f),
                     onClick = { /* TODO */ }
                 )
@@ -473,9 +597,9 @@ fun DeviceControlSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            QuickSyncItem(Icons.Default.Image, "同步相簿到 TV", "DCIM → TV:/Photos/手機相簿")
-            QuickSyncItem(Icons.Default.VideoFile, "同步影片到 TV", "Movies → TV:/Movies/")
-            QuickSyncItem(Icons.Default.Android, "安裝 APK 到 TV", "選擇 APK 檔案 sideload 到 TV")
+            QuickSyncItem(Icons.Default.Image, "同步相簿", "DCIM → 對方裝置:/Photos/")
+            QuickSyncItem(Icons.Default.VideoFile, "同步影片", "Movies → 對方裝置:/Movies/")
+            QuickSyncItem(Icons.Default.Android, "傳送 APK", "選擇 APK 檔案傳送到對方裝置")
 
             Spacer(Modifier.height(32.dp))
         }

@@ -9,12 +9,16 @@ import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+//import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+//import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import android.graphics.Color
+import androidx.activity.SystemBarStyle
 import com.openfx.app.platform.Platform
 import com.openfx.app.platform.PlatformDetector
 import com.openfx.app.ui.tv.OpenFXTvTheme
@@ -48,12 +52,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!platformDetector.isTv) {
-            enableEdgeToEdge()
-        }
+//        if (!platformDetector.isTv) {
+//            enableEdgeToEdge(
+//                statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+//            )
+        //}
 
         requestStoragePermission()
-
+//        window.statusBarColor = android.graphics.Color.TRANSPARENT
         setContent {
             when (platformDetector.platform) {
                 // ===== TV 模式 =====
@@ -73,7 +79,9 @@ class MainActivity : ComponentActivity() {
                 Platform.PHONE, Platform.TABLET -> {
                     OpenFXTheme {
                         Surface(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                            .fillMaxSize()
+                            .systemBarsPadding(),
                             color = MaterialTheme.colorScheme.background
                         ) {
                             OpenFXNavHost()

@@ -64,7 +64,16 @@ class LocalFileOperations @Inject constructor(
         var completed = 0
 
         sourceFiles.forEach { source ->
-            val target = File(destDir, source.name)
+            var target = File(destDir, source.name)
+            if (target.exists()) {
+                val nameWithoutExt = source.nameWithoutExtension
+                val ext = if (source.extension.isNotEmpty()) ".${source.extension}" else ""
+                var counter = 1
+                while (target.exists()) {
+                    target = File(destDir, "${nameWithoutExt}_copy${if (counter > 1) counter.toString() else ""}${ext}")
+                    counter++
+                }
+            }
             if (source.isDirectory) {
                 source.copyRecursively(target, overwrite = true) { _, _ ->
                     // 可以在此加入更細緻的進度追蹤

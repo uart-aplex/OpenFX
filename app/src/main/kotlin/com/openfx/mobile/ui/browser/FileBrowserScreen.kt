@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
@@ -18,19 +19,29 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.clickable
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
 import com.openfx.app.platform.rememberAdaptiveLayoutInfo
 import com.openfx.core.file.FileItem
 import com.openfx.core.file.FileType
 import com.openfx.core.file.StorageVolume
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.background
+import com.openfx.common.ui.FileIcon
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,11 +87,15 @@ fun FileBrowserScreen(
                         Icon(Icons.Default.SelectAll, contentDescription = "全選")
                     }
                 } else {
-                    IconButton(onClick = { /* TODO: 搜尋 */ }) {
+                    IconButton(onClick = { viewModel.toggleSearchBar() }) {
                         Icon(Icons.Default.Search, contentDescription = "搜尋")
                     }
-                    IconButton(onClick = { /* TODO: 更多選項 */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                    IconButton(onClick = { viewModel.toggleShowHidden() }) {
+                        Icon(
+                            if (uiState.showHidden) Icons.Default.VisibilityOff
+                            else Icons.Default.Visibility,
+                            contentDescription = "隱藏檔案"
+                        )
                     }
                 }
             },
@@ -98,12 +113,63 @@ fun FileBrowserScreen(
             onNavigate = { viewModel.navigateTo(it) }
         )
 
+        // ===== 搜尋列 =====
+        AnimatedVisibility(visible = uiState.showSearchBar) {
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = { viewModel.search(it) },
+                placeholder = { Text("搜尋檔案…", fontSize = 14.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.search("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "清除", modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        // ===== 錯誤提示 =====
+        if (uiState.error != null) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        uiState.error!!,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text("關閉", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
         // ===== 檢視模式切換列 =====
         ViewModeBar(
             viewMode = uiState.viewMode,
             sortBy = uiState.sortBy,
+            showSortMenu = uiState.showSortMenu,
             onViewModeChange = { viewModel.setViewMode(it) },
-            onSortChange = { viewModel.setSortBy(it) }
+            onSortChange = { viewModel.setSortBy(it) },
+            onToggleSortMenu = { viewModel.toggleSortMenu() },
+            onToggleSortOrder = { viewModel.toggleSortOrder() },
+            sortAscending = uiState.sortAscending
         )
 
         // ===== 主內容區域 — 根據方向切換佈局 =====
@@ -137,6 +203,47 @@ fun FileBrowserScreen(
             )
         }
 
+        // ===== 剪貼簿提示列 (複製/移動後顯示) =====
+        AnimatedVisibility(visible = uiState.clipboard != null) {
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                tonalElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val clip = uiState.clipboard
+                    Text(
+                        text = if (clip?.mode == ClipboardMode.COPY)
+                            "已複製 ${clip.paths.size} 個項目，前往目標資料夾後按貼上"
+                        else "已剪下 ${clip?.paths?.size ?: 0} 個項目，前往目標資料夾後按貼上",
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    TextButton(onClick = { viewModel.pasteClipboard() }) {
+                        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("貼上")
+                    }
+                    TextButton(onClick = { viewModel.clearClipboard() }) {
+                        Text("取消", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        // ===== 操作進度 =====
+        if (uiState.isOperating && uiState.operationProgress != null) {
+            LinearProgressIndicator(
+                progress = { uiState.operationProgress!!.percent },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
         // ===== 底部操作列 =====
         AnimatedVisibility(
             visible = viewModel.isMultiSelectMode,
@@ -144,23 +251,24 @@ fun FileBrowserScreen(
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
             ActionBar(
-                onCopy = { /* TODO */ },
-                onMove = { /* TODO */ },
+                onCopy = { viewModel.copySelected() },
+                onMove = { viewModel.moveSelected() },
                 onRename = { viewModel.showRenameDialog() },
                 onDelete = { viewModel.showDeleteConfirm() },
-                onShare = { /* TODO */ },
+                onShare = { viewModel.shareSelected() },
                 singleSelected = uiState.selectedFiles.size == 1
             )
         }
 
         AnimatedVisibility(
-            visible = !viewModel.isMultiSelectMode,
+            visible = !viewModel.isMultiSelectMode && uiState.clipboard == null,
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
             QuickActionBar(
                 onNewFolder = { viewModel.showNewFolderDialog() },
-                onSelectAll = { viewModel.selectAll() }
+                onSelectAll = { viewModel.selectAll() },
+                onProperties = { viewModel.showPropertiesDialog() }
             )
         }
     }
@@ -211,6 +319,30 @@ fun FileBrowserScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.hideDeleteConfirm() }) { Text("取消") }
+            }
+        )
+    }
+
+    // 屬性對話框
+    if (uiState.showPropertiesDialog) {
+        val path = uiState.currentPath
+        val file = java.io.File(path)
+        val dateFormat = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss", java.util.Locale.getDefault())
+        AlertDialog(
+            onDismissRequest = { viewModel.hidePropertiesDialog() },
+            title = { Text("資料夾屬性") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("名稱: ${file.name}", fontSize = 13.sp)
+                    Text("路徑: $path", fontSize = 13.sp)
+                    Text("項目數: ${uiState.files.size} 個", fontSize = 13.sp)
+                    Text("修改時間: ${dateFormat.format(java.util.Date(file.lastModified()))}", fontSize = 13.sp)
+                    Text("可讀: ${if (file.canRead()) "是" else "否"}", fontSize = 13.sp)
+                    Text("可寫: ${if (file.canWrite()) "是" else "否"}", fontSize = 13.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.hidePropertiesDialog() }) { Text("關閉") }
             }
         )
     }
@@ -270,8 +402,12 @@ private fun rememberScrollState() = androidx.compose.foundation.rememberScrollSt
 fun ViewModeBar(
     viewMode: ViewMode,
     sortBy: com.openfx.core.file.SortBy,
+    showSortMenu: Boolean,
     onViewModeChange: (ViewMode) -> Unit,
-    onSortChange: (com.openfx.core.file.SortBy) -> Unit
+    onSortChange: (com.openfx.core.file.SortBy) -> Unit,
+    onToggleSortMenu: () -> Unit,
+    onToggleSortOrder: () -> Unit,
+    sortAscending: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -304,18 +440,59 @@ fun ViewModeBar(
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = { /* TODO: 排序選單 */ }) {
-            Text(
-                text = "排序: ${
-                    when (sortBy) {
-                        com.openfx.core.file.SortBy.NAME -> "名稱"
-                        com.openfx.core.file.SortBy.SIZE -> "大小"
-                        com.openfx.core.file.SortBy.DATE -> "日期"
-                        com.openfx.core.file.SortBy.TYPE -> "類型"
+
+        // 排序按鈕 + 下拉選單
+        Box {
+            TextButton(onClick = onToggleSortMenu) {
+                Text(
+                    text = "排序: ${
+                        when (sortBy) {
+                            com.openfx.core.file.SortBy.NAME -> "名稱"
+                            com.openfx.core.file.SortBy.SIZE -> "大小"
+                            com.openfx.core.file.SortBy.DATE -> "日期"
+                            com.openfx.core.file.SortBy.TYPE -> "類型"
+                        }
+                    } ${if (sortAscending) "↑" else "↓"}",
+                    fontSize = 12.sp
+                )
+            }
+            DropdownMenu(expanded = showSortMenu, onDismissRequest = onToggleSortMenu) {
+                com.openfx.core.file.SortBy.entries.forEach { sort ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(when (sort) {
+                                com.openfx.core.file.SortBy.NAME -> "名稱"
+                                com.openfx.core.file.SortBy.SIZE -> "大小"
+                                com.openfx.core.file.SortBy.DATE -> "日期"
+                                com.openfx.core.file.SortBy.TYPE -> "類型"
+                            })
+                        },
+                        onClick = { onSortChange(sort) },
+                        leadingIcon = {
+                            if (sort == sortBy) Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(if (sortAscending) "切換為降序" else "切換為升序") },
+                    onClick = {
+                        onToggleSortOrder()
+                        onToggleSortMenu()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            if (sortAscending) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                } ▼",
-                fontSize = 12.sp
-            )
+                )
+            }
         }
     }
 }
@@ -365,13 +542,22 @@ fun FileGrid(
                         )
                     }
 
-                    // 檔案圖示
-                    Icon(
-                        imageVector = file.fileType.icon,
-                        contentDescription = null,
-                        tint = file.fileType.color,
-                        modifier = Modifier.size(44.dp)
-                    )
+                    // 檔案圖示 / 圖片縮圖
+                    if (file.fileType == FileType.IMAGE || file.fileType == FileType.VIDEO) {
+                        AsyncImage(
+                            model = File(file.path),
+                            contentDescription = file.name,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        FileIcon(
+                            file = File(file.path),
+                            modifier = Modifier.size(44.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -417,12 +603,21 @@ fun FileList(
                     onLongClick = { onFileLongClick(file) }
                 ),
                 leadingContent = {
-                    Icon(
-                        imageVector = file.fileType.icon,
-                        contentDescription = null,
-                        tint = file.fileType.color,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    if (file.fileType == FileType.IMAGE || file.fileType == FileType.VIDEO) {
+                        AsyncImage(
+                            model = File(file.path),
+                            contentDescription = file.name,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        FileIcon(
+                            file = File(file.path),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 },
                 headlineContent = {
                     Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -503,7 +698,7 @@ private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) 
 
 // ===== 底部快捷列 (非選擇模式) =====
 @Composable
-fun QuickActionBar(onNewFolder: () -> Unit, onSelectAll: () -> Unit) {
+fun QuickActionBar(onNewFolder: () -> Unit, onSelectAll: () -> Unit, onProperties: () -> Unit = {}) {
     Surface(tonalElevation = 2.dp) {
         Row(
             modifier = Modifier
@@ -515,7 +710,7 @@ fun QuickActionBar(onNewFolder: () -> Unit, onSelectAll: () -> Unit) {
             ActionButton(Icons.Default.CreateNewFolder, "新增", onNewFolder)
             ActionButton(Icons.Default.SelectAll, "全選", onSelectAll)
             ActionButton(Icons.Default.BookmarkBorder, "書籤") { /* TODO */ }
-            ActionButton(Icons.Default.Info, "屬性") { /* TODO */ }
+            ActionButton(Icons.Default.Info, "屬性", onProperties)
         }
     }
 }
@@ -562,6 +757,9 @@ fun FileContentArea(
     viewModel: FileBrowserViewModel,
     modifier: Modifier = Modifier
 ) {
+    var previewImagePath by remember { mutableStateOf<String?>(null) }
+    var previewAudioPath by remember { mutableStateOf<String?>(null) }
+
     Box(modifier = modifier) {
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -581,8 +779,12 @@ fun FileContentArea(
                             viewModel.toggleSelection(file.path)
                         } else if (file.isDirectory) {
                             viewModel.navigateTo(file.path)
+                        } else if (file.fileType == FileType.IMAGE) {
+                            previewImagePath = file.path
+                        } else if (file.fileType == FileType.AUDIO) {
+                            previewAudioPath = file.path
                         } else {
-                            // TODO: 開啟檔案
+                            viewModel.openFile(file)
                         }
                     },
                     onFileLongClick = { viewModel.toggleSelection(it.path) }
@@ -595,14 +797,30 @@ fun FileContentArea(
                             viewModel.toggleSelection(file.path)
                         } else if (file.isDirectory) {
                             viewModel.navigateTo(file.path)
+                        } else if (file.fileType == FileType.IMAGE) {
+                            previewImagePath = file.path
+                        } else if (file.fileType == FileType.AUDIO) {
+                            previewAudioPath = file.path
                         } else {
-                            // TODO: 開啟檔案
+                            viewModel.openFile(file)
                         }
                     },
                     onFileLongClick = { viewModel.toggleSelection(it.path) }
                 )
             }
         }
+    }
+    previewImagePath?.let { path ->
+        ImagePreviewDialog(
+            imagePath = path,
+            onDismiss = { previewImagePath = null }
+        )
+    }
+    previewAudioPath?.let { path ->
+        AudioPlayerDialog(
+            audioPath = path,
+            onDismiss = { previewAudioPath = null }
+        )
     }
 }
 
@@ -776,6 +994,104 @@ private fun SidebarNavItem(
             Text(label, fontSize = 13.sp)
         }
     }
+}
+
+@Composable
+fun ImagePreviewDialog(
+    imagePath: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable { onDismiss() }
+        ) {
+            AsyncImage(
+                model = java.io.File(imagePath),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "關閉",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AudioPlayerDialog(
+    audioPath: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var isPlaying by remember { mutableStateOf(false) }
+
+    val mediaPlayer = remember(audioPath) {
+        android.media.MediaPlayer().apply {
+            setDataSource(audioPath)
+            prepare()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer.stop()
+            mediaPlayer.release()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("音樂播放") },
+        text = {
+            Column {
+                Text(File(audioPath).name)
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        if (mediaPlayer.isPlaying) {
+                            mediaPlayer.pause()
+                            isPlaying = false
+                        } else {
+                            mediaPlayer.start()
+                            isPlaying = true
+                        }
+                    }
+                ) {
+                    Text(if (isPlaying) "暫停" else "播放")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                }
+            ) {
+                Text("關閉")
+            }
+        }
+    )
 }
 
 // ===== FileType 圖示和顏色對應 =====
