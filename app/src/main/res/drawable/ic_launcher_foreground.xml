@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 藍色資料夾圖示 -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M34,38h16l4,-4h20c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V42c0,-2.2 1.8,-4 4,-4z" />
+    <!-- FX 文字用兩條交叉線表示 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,50h6v2h-6z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,54h4v2h-4z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,50l4,8M58,50l-4,8"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5" />
+</vector>
