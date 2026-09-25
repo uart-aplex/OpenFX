@@ -94,7 +94,9 @@ fun OpenFXNavHost() {
                 modifier = Modifier.weight(1f)
             ) {
                 composable(NavItem.Files.route) { FileBrowserScreen() }
-                composable(NavItem.Devices.route) { DeviceScreen() }
+                composable(NavItem.Devices.route) {
+                    DeviceScreen(onTransferStarted = { navigateTo(NavItem.Transfer.route) })
+                }
                 composable(NavItem.Transfer.route) { TransferScreen() }
                 composable(NavItem.Settings.route) { SettingsScreen() }
             }
@@ -121,7 +123,9 @@ fun OpenFXNavHost() {
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable(NavItem.Files.route) { FileBrowserScreen() }
-                composable(NavItem.Devices.route) { DeviceScreen() }
+                composable(NavItem.Devices.route) {
+                    DeviceScreen(onTransferStarted = { navigateTo(NavItem.Transfer.route) })
+                }
                 composable(NavItem.Transfer.route) { TransferScreen() }
                 composable(NavItem.Settings.route) { SettingsScreen() }
             }

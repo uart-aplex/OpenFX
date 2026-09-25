@@ -25,11 +25,7 @@ object LanDeviceScanner {
                 if (!address.isLoopbackAddress && address is Inet4Address) {
                     val ip = address.hostAddress ?: continue
 
-                    if (
-                        ip.startsWith("192.168.") ||
-                        ip.startsWith("10.") ||
-                        ip.startsWith("172.")
-                    ) {
+                    if (ip.isPrivateLanAddress()) {
                         return ip
                     }
                 }
@@ -113,5 +109,15 @@ object LanDeviceScanner {
     private fun extractJsonString(json: String, key: String): String? {
         val regex = Regex(""""$key"\s*:\s*"([^"]*)"""")
         return regex.find(json)?.groupValues?.getOrNull(1)
+    }
+
+    private fun String.isPrivateLanAddress(): Boolean {
+        if (startsWith("10.") || startsWith("192.168.")) return true
+
+        val parts = split(".")
+        if (parts.size < 2 || parts.first() != "172") return false
+
+        val second = parts[1].toIntOrNull() ?: return false
+        return second in 16..31
     }
 }

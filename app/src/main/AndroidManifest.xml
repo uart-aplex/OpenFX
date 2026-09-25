@@ -27,7 +27,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- ====== 硬體功能 ====== -->
     <uses-feature android:name="android.hardware.usb.host" android:required="false" />
@@ -51,7 +54,7 @@
         android:allowBackup="true"
         android:banner="@drawable/tv_banner"
         android:icon="@mipmap/ic_launcher"
-        android:label="OpenFX"
+        android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.OpenFX"
@@ -81,6 +84,12 @@
             </intent-filter>
         </activity>
 
+        <!-- 內建影片播放器 (configChanges: 旋轉不重建) -->
+        <activity
+            android:name=".ui.media.VideoPlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -105,6 +114,12 @@
         <service
             android:name="com.openfx.app.ui.tv.remote.RemoteControlService"
             android:foregroundServiceType="connectedDevice"
+            android:exported="false" />
+
+        <!-- P2P 傳輸前景服務 — 讓接收模式在背景持續 -->
+        <service
+            android:name=".ui.transfer.TransferService"
+            android:foregroundServiceType="dataSync"
             android:exported="false" />
 
     </application>

@@ -1,6 +1,8 @@
 package com.openfx.core.sync.http
 
+import java.io.BufferedInputStream
 import java.io.File
+import java.io.InputStream
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
@@ -8,7 +10,16 @@ import java.net.URLDecoder
 class OpenFxHttpReceiver(
     private val deviceName: String,
     private val saveDir: File,
-    private val port: Int = 8989
+    private val port: Int = 8989,
+    private val onFileReceived: (File, senderDeviceName: String) -> Unit = { _, _ -> },
+    private val onError: (String) -> Unit = {},
+    private val onProgress: (
+        fileName: String,
+        bytesReceived: Long,
+        totalBytes: Long,
+        senderDeviceName: String
+    ) -> Unit = { _, _, _, _ -> },
+    private val onFailed: (fileName: String, reason: String) -> Unit = { _, _ -> }
 ) {
     private var serverSocket: ServerSocket? = null
     private var serverThread: Thread? = null
@@ -33,8 +44,12 @@ class OpenFxHttpReceiver(
                         handleClient(socket)
                     }.start()
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                val wasRunning = isRunning
                 isRunning = false
+                if (wasRunning) {
+                    onError(e.message ?: "HTTP receiver stopped")
+                }
             }
         }
 
@@ -56,27 +71,43 @@ class OpenFxHttpReceiver(
 
     private fun handleClient(socket: Socket) {
         socket.use { client ->
-            val input = client.getInputStream()
-            val output = client.getOutputStream()
+            try {
+                // 30 秒沒收到資料就判定對方斷線 — 避免半開連線讓接收任務永遠卡住
+                client.soTimeout = 30_000
+                // header 是逐 byte 讀的，務必包 buffer（body 也從同一條 stream 繼續讀）
+                val input = BufferedInputStream(client.getInputStream(), 64 * 1024)
+                val output = client.getOutputStream()
 
-            val reader = input.bufferedReader()
-            val requestLine = reader.readLine() ?: return
+                val requestLine = input.readHttpLine() ?: return
 
-            val headers = mutableMapOf<String, String>()
+                val headers = mutableMapOf<String, String>()
 
-            while (true) {
-                val line = reader.readLine() ?: break
-                if (line.isEmpty()) break
+                while (true) {
+                    val line = input.readHttpLine() ?: break
+                    if (line.isEmpty()) break
 
-                val index = line.indexOf(":")
-                if (index > 0) {
-                    val key = line.substring(0, index).trim().lowercase()
-                    val value = line.substring(index + 1).trim()
-                    headers[key] = value
+                    val index = line.indexOf(":")
+                    if (index > 0) {
+                        val key = line.substring(0, index).trim().lowercase()
+                        val value = line.substring(index + 1).trim()
+                        headers[key] = value
+                    }
                 }
-            }
 
-            when {
+                handleRequest(requestLine, headers, input, output)
+            } catch (_: Exception) {
+                // 對方中途斷線或協議錯誤 — 直接結束這條連線
+            }
+        }
+    }
+
+    private fun handleRequest(
+        requestLine: String,
+        headers: Map<String, String>,
+        input: InputStream,
+        output: java.io.OutputStream
+    ) {
+        when {
                 requestLine.startsWith("GET /ping") -> {
                     val body = """
                         {
@@ -98,6 +129,7 @@ class OpenFxHttpReceiver(
                 requestLine.startsWith("POST /upload") -> {
                     val filename = extractFilename(requestLine)
                     val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
+                    val senderDeviceName = decodeDeviceName(headers["x-openfx-device"])
 
                     if (contentLength <= 0L) {
                         writeResponse(
@@ -111,32 +143,58 @@ class OpenFxHttpReceiver(
 
                     val target = createNonConflictingFile(saveDir, filename)
 
-                    target.outputStream().use { fileOut ->
-                        var remaining = contentLength
-                        val buffer = ByteArray(64 * 1024)
+                    try {
+                        onProgress(filename, 0L, contentLength, senderDeviceName)
+                        target.outputStream().use { fileOut ->
+                            var remaining = contentLength
+                            val buffer = ByteArray(64 * 1024)
 
-                        while (remaining > 0) {
-                            val read = input.read(
-                                buffer,
-                                0,
-                                minOf(buffer.size.toLong(), remaining).toInt()
-                            )
+                            while (remaining > 0) {
+                                val read = input.read(
+                                    buffer,
+                                    0,
+                                    minOf(buffer.size.toLong(), remaining).toInt()
+                                )
 
-                            if (read <= 0) break
+                                if (read <= 0) break
 
-                            fileOut.write(buffer, 0, read)
-                            remaining -= read
+                                fileOut.write(buffer, 0, read)
+                                remaining -= read
+                                onProgress(
+                                    filename,
+                                    contentLength - remaining,
+                                    contentLength,
+                                    senderDeviceName
+                                )
+                            }
+
+                            if (remaining > 0) {
+                                throw IllegalStateException("Upload ended early: $remaining bytes missing")
+                            }
                         }
+
+                        onFileReceived(target, senderDeviceName)
+
+                        val body = """{"ok":true,"path":"${target.absolutePath}"}"""
+
+                        writeResponse(
+                            output = output,
+                            status = "200 OK",
+                            contentType = "application/json; charset=utf-8",
+                            body = body
+                        )
+                    } catch (e: Exception) {
+                        target.delete()
+                        val message = e.message ?: "Upload failed"
+                        onFailed(filename, message)
+                        onError(message)
+                        writeResponse(
+                            output = output,
+                            status = "500 Internal Server Error",
+                            contentType = "text/plain; charset=utf-8",
+                            body = message
+                        )
                     }
-
-                    val body = """{"ok":true,"path":"${target.absolutePath}"}"""
-
-                    writeResponse(
-                        output = output,
-                        status = "200 OK",
-                        contentType = "application/json; charset=utf-8",
-                        body = body
-                    )
                 }
 
                 else -> {
@@ -147,7 +205,6 @@ class OpenFxHttpReceiver(
                         body = "Not Found"
                     )
                 }
-            }
         }
     }
 
@@ -175,6 +232,7 @@ class OpenFxHttpReceiver(
     private fun extractFilename(requestLine: String): String {
         val raw = requestLine
             .substringAfter("filename=", "received_file")
+            .substringBefore("&")
             .substringBefore(" ")
 
         return try {
@@ -184,8 +242,16 @@ class OpenFxHttpReceiver(
         }
     }
 
+    private fun decodeDeviceName(encodedName: String?): String {
+        if (encodedName.isNullOrBlank()) return "OpenFX Device"
+        return runCatching { URLDecoder.decode(encodedName, "UTF-8") }
+            .getOrDefault("OpenFX Device")
+            .takeIf { it.isNotBlank() }
+            ?: "OpenFX Device"
+    }
+
     private fun createNonConflictingFile(dir: File, filename: String): File {
-        var safeName = filename
+        val safeName = filename
             .replace("/", "_")
             .replace("\\", "_")
             .ifBlank { "received_file" }
@@ -205,5 +271,25 @@ class OpenFxHttpReceiver(
         }
 
         return target
+    }
+
+    private fun InputStream.readHttpLine(): String? {
+        val bytes = mutableListOf<Byte>()
+
+        while (true) {
+            val value = read()
+            if (value == -1) {
+                return if (bytes.isEmpty()) null else bytes.toByteArray().toString(Charsets.ISO_8859_1)
+            }
+
+            if (value == '\n'.code) {
+                if (bytes.lastOrNull() == '\r'.code.toByte()) {
+                    bytes.removeAt(bytes.lastIndex)
+                }
+                return bytes.toByteArray().toString(Charsets.ISO_8859_1)
+            }
+
+            bytes.add(value.toByte())
+        }
     }
 }

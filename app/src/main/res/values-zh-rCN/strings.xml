@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- OpenFX 字符串资源 — 简体中文 -->
 <resources>
-    <string name="app_name">OpenFX</string>
+    <string name="app_name">OpenFX 文件管理器</string>
     <string name="confirm">确认</string>
     <string name="cancel">取消</string>
     <string name="delete">删除</string>
@@ -20,7 +20,7 @@
     <string name="nav_transfer">传输</string>
     <string name="nav_settings">设置</string>
 
-    <string name="browser_title">OpenFX</string>
+    <string name="browser_title">OpenFX 文件管理器</string>
     <string name="browser_selected_count">已选 %d 项</string>
     <string name="browser_cancel_select">取消选择</string>
     <string name="browser_select_all">全选</string>
@@ -85,17 +85,17 @@
     <string name="pairing_pin_instruction">请在 %s 上输入此 PIN 码</string>
     <string name="pairing_start">开始配对</string>
 
-    <string name="control_send_to_tv">发送到电视</string>
-    <string name="control_download_from_tv">从电视下载</string>
-    <string name="control_browse_tv">浏览电视文件</string>
-    <string name="control_play_on_tv">在电视播放</string>
+    <string name="control_send_to_tv">发送到设备</string>
+    <string name="control_download_from_tv">从设备下载</string>
+    <string name="control_browse_tv">浏览设备文件</string>
+    <string name="control_play_on_tv">在设备播放</string>
     <string name="control_quick_actions">快捷操作</string>
-    <string name="control_sync_photos">同步相册到电视</string>
-    <string name="control_sync_photos_desc">DCIM → TV:/Photos/手机相册</string>
-    <string name="control_sync_videos">同步视频到电视</string>
-    <string name="control_sync_videos_desc">Movies → TV:/Movies/</string>
-    <string name="control_install_apk">安装 APK 到电视</string>
-    <string name="control_install_apk_desc">选择 APK 文件 sideload 到电视</string>
+    <string name="control_sync_photos">同步相册到设备</string>
+    <string name="control_sync_photos_desc">DCIM → 对方设备:/Photos/</string>
+    <string name="control_sync_videos">同步视频到设备</string>
+    <string name="control_sync_videos_desc">Movies → 对方设备:/Movies/</string>
+    <string name="control_install_apk">发送 APK 到设备</string>
+    <string name="control_install_apk_desc">选择 APK 文件发送到对方设备</string>
     <string name="device_connected">已连接</string>
 
     <string name="transfer_active">传输中</string>

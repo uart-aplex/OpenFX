@@ -14,7 +14,7 @@
 -->
 <resources>
     <!-- ===== 通用 ===== -->
-    <string name="app_name">OpenFX</string>
+    <string name="app_name">OpenFX 檔案管理器</string>
     <string name="confirm">確認</string>
     <string name="cancel">取消</string>
     <string name="delete">刪除</string>
@@ -35,7 +35,7 @@
     <string name="nav_settings">設定</string>
 
     <!-- ===== 檔案瀏覽器 ===== -->
-    <string name="browser_title">OpenFX</string>
+    <string name="browser_title">OpenFX 檔案管理器</string>
     <string name="browser_selected_count">已選取 %d 項</string>
     <string name="browser_cancel_select">取消選取</string>
     <string name="browser_select_all">全選</string>
@@ -103,22 +103,22 @@
     <string name="pairing_qr_code">QR Code</string>
     <string name="pairing_pin">PIN 碼</string>
     <string name="pairing_connecting">正在建立連線…</string>
-    <string name="pairing_qr_instruction">請在 %s 上開啟 OpenFX\n選擇「配對手機」掃描此 QR Code</string>
+    <string name="pairing_qr_instruction">請在 %s 上開啟 OpenFX\n選擇「我要接收」後再進行連線</string>
     <string name="pairing_pin_instruction">請在 %s 上輸入此 PIN 碼</string>
     <string name="pairing_start">開始配對</string>
 
     <!-- 裝置控制 -->
-    <string name="control_send_to_tv">傳檔到 TV</string>
-    <string name="control_download_from_tv">從 TV 下載</string>
-    <string name="control_browse_tv">瀏覽 TV 檔案</string>
-    <string name="control_play_on_tv">在 TV 播放</string>
+    <string name="control_send_to_tv">傳檔到裝置</string>
+    <string name="control_download_from_tv">從裝置下載</string>
+    <string name="control_browse_tv">瀏覽裝置檔案</string>
+    <string name="control_play_on_tv">在裝置播放</string>
     <string name="control_quick_actions">快速操作</string>
-    <string name="control_sync_photos">同步相簿到 TV</string>
-    <string name="control_sync_photos_desc">DCIM → TV:/Photos/手機相簿</string>
-    <string name="control_sync_videos">同步影片到 TV</string>
-    <string name="control_sync_videos_desc">Movies → TV:/Movies/</string>
-    <string name="control_install_apk">安裝 APK 到 TV</string>
-    <string name="control_install_apk_desc">選擇 APK 檔案 sideload 到 TV</string>
+    <string name="control_sync_photos">同步相簿到裝置</string>
+    <string name="control_sync_photos_desc">DCIM → 對方裝置:/Photos/</string>
+    <string name="control_sync_videos">同步影片到裝置</string>
+    <string name="control_sync_videos_desc">Movies → 對方裝置:/Movies/</string>
+    <string name="control_install_apk">傳送 APK 到裝置</string>
+    <string name="control_install_apk_desc">選擇 APK 檔案傳送到對方裝置</string>
     <string name="device_connected">已連線</string>
 
     <!-- ===== 傳輸 ===== -->

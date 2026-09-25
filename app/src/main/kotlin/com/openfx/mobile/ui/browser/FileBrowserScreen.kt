@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -34,14 +35,15 @@ import androidx.compose.foundation.clickable
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import com.openfx.app.platform.rememberAdaptiveLayoutInfo
+import com.openfx.core.file.ArchiveOperations
 import com.openfx.core.file.FileItem
 import com.openfx.core.file.FileType
 import com.openfx.core.file.StorageVolume
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import com.openfx.common.ui.FileIcon
 import java.io.File
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,9 +52,14 @@ fun FileBrowserScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val layoutInfo = rememberAdaptiveLayoutInfo()
+    val sendDevices by viewModel.sendDevices.collectAsState()
+    val isScanningSendDevices by viewModel.isScanningSendDevices.collectAsState()
+    val bookmarks by viewModel.bookmarks.collectAsState()
+    var showBookmarks by remember { mutableStateOf(false) }
 
     // 返回鍵處理：多選模式 → 取消選擇，否則 → 回上一層
-    BackHandler {
+    // 到頂 (canNavigateUp=false) 時不攔截，讓系統正常處理返回 (不會卡死)
+    BackHandler(enabled = viewModel.isMultiSelectMode || viewModel.canNavigateUp) {
         if (viewModel.isMultiSelectMode) {
             viewModel.clearSelection()
         } else {
@@ -75,7 +82,7 @@ fun FileBrowserScreen(
                     IconButton(onClick = { viewModel.clearSelection() }) {
                         Icon(Icons.Default.Close, contentDescription = "取消選取")
                     }
-                } else {
+                } else if (viewModel.canNavigateUp) {
                     IconButton(onClick = { viewModel.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
@@ -87,6 +94,13 @@ fun FileBrowserScreen(
                         Icon(Icons.Default.SelectAll, contentDescription = "全選")
                     }
                 } else {
+                    IconButton(onClick = { viewModel.toggleBookmark(uiState.currentPath) }) {
+                        Icon(
+                            if (uiState.currentPath in bookmarks) Icons.Default.Star
+                            else Icons.Default.StarBorder,
+                            contentDescription = "書籤"
+                        )
+                    }
                     IconButton(onClick = { viewModel.toggleSearchBar() }) {
                         Icon(Icons.Default.Search, contentDescription = "搜尋")
                     }
@@ -110,8 +124,18 @@ fun FileBrowserScreen(
         // ===== 路徑導航列 =====
         BreadcrumbBar(
             path = uiState.currentPath,
+            volumes = uiState.storageVolumes,
             onNavigate = { viewModel.navigateTo(it) }
         )
+
+        // ===== 類別籤列 (手機直向專用；橫向/平板用側邊欄) =====
+        if (!layoutInfo.useDualPane) {
+            CategoryChipRow(
+                volumes = uiState.storageVolumes,
+                currentPath = uiState.currentPath,
+                onNavigate = { viewModel.navigateTo(it) }
+            )
+        }
 
         // ===== 搜尋列 =====
         AnimatedVisibility(visible = uiState.showSearchBar) {
@@ -180,6 +204,7 @@ fun FileBrowserScreen(
                 FileSidebar(
                     volumes = uiState.storageVolumes,
                     currentPath = uiState.currentPath,
+                    bookmarks = bookmarks,
                     onNavigate = { viewModel.navigateTo(it) },
                     modifier = Modifier.width(layoutInfo.sidebarWidth.dp)
                 )
@@ -256,6 +281,7 @@ fun FileBrowserScreen(
                 onRename = { viewModel.showRenameDialog() },
                 onDelete = { viewModel.showDeleteConfirm() },
                 onShare = { viewModel.shareSelected() },
+                onSend = { viewModel.openSendDialog() },
                 singleSelected = uiState.selectedFiles.size == 1
             )
         }
@@ -268,7 +294,8 @@ fun FileBrowserScreen(
             QuickActionBar(
                 onNewFolder = { viewModel.showNewFolderDialog() },
                 onSelectAll = { viewModel.selectAll() },
-                onProperties = { viewModel.showPropertiesDialog() }
+                onProperties = { viewModel.showPropertiesDialog() },
+                onBookmark = { showBookmarks = true }
             )
         }
     }
@@ -346,12 +373,84 @@ fun FileBrowserScreen(
             }
         )
     }
+
+    // 傳送到裝置對話框
+    if (uiState.showSendDialog) {
+        SendToDeviceDialog(
+            devices = sendDevices,
+            isScanning = isScanningSendDevices,
+            onRescan = { viewModel.scanSendDevices() },
+            onSelect = { viewModel.sendSelectedTo(it) },
+            onDismiss = { viewModel.closeSendDialog() }
+        )
+    }
+
+    // 書籤列表對話框
+    if (showBookmarks) {
+        BookmarksDialog(
+            bookmarks = bookmarks,
+            onNavigate = { viewModel.navigateTo(it) },
+            onRemove = { viewModel.removeBookmark(it) },
+            onDismiss = { showBookmarks = false }
+        )
+    }
 }
 
 // ===== 路徑導航列 (類似 ES 的路徑列) =====
+
+private data class Crumb(val label: String, val path: String)
+
+/** 快捷位置 — 位置選單和橫向側邊欄共用 */
+private val locationShortcuts = listOf(
+    Triple(Icons.Default.Download, "下載", "/storage/emulated/0/Download"),
+    Triple(Icons.Default.Image, "圖片", "/storage/emulated/0/DCIM"),
+    Triple(Icons.Default.VideoFile, "影片", "/storage/emulated/0/Movies"),
+    Triple(Icons.Default.AudioFile, "音樂", "/storage/emulated/0/Music"),
+    Triple(Icons.Default.Description, "文件", "/storage/emulated/0/Documents"),
+)
+
+/**
+ * 把完整路徑切成「磁區名稱 › 子資料夾 › …」的導航段落。
+ * /storage/emulated/0/Download → [內部儲存, Download]
+ * (不再把 storage/emulated/0 顯示成三段奇怪標籤)
+ */
+private fun buildCrumbs(path: String, volumes: List<StorageVolume>): List<Crumb> {
+    val allVolumes = volumes.ifEmpty {
+        listOf(
+            StorageVolume(
+                "內部儲存",
+                android.os.Environment.getExternalStorageDirectory().absolutePath,
+                0, 0, false
+            )
+        )
+    }
+    val volume = allVolumes
+        .filter { path == it.path || path.startsWith("${it.path}/") }
+        .maxByOrNull { it.path.length }
+
+    return if (volume != null) {
+        val crumbs = mutableListOf(Crumb(volume.name, volume.path))
+        var acc = volume.path
+        path.removePrefix(volume.path).split("/").filter { it.isNotEmpty() }.forEach { segment ->
+            acc = "$acc/$segment"
+            crumbs += Crumb(segment, acc)
+        }
+        crumbs
+    } else {
+        val segments = path.split("/").filter { it.isNotEmpty() }
+        segments.mapIndexed { index, segment ->
+            Crumb(segment, "/" + segments.take(index + 1).joinToString("/"))
+        }
+    }
+}
+
 @Composable
-fun BreadcrumbBar(path: String, onNavigate: (String) -> Unit) {
-    val segments = path.split("/").filter { it.isNotEmpty() }
+fun BreadcrumbBar(
+    path: String,
+    volumes: List<StorageVolume>,
+    onNavigate: (String) -> Unit
+) {
+    val crumbs = remember(path, volumes) { buildCrumbs(path, volumes) }
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 1.dp
@@ -363,7 +462,7 @@ fun BreadcrumbBar(path: String, onNavigate: (String) -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            segments.forEachIndexed { index, segment ->
+            crumbs.forEachIndexed { index, crumb ->
                 if (index > 0) {
                     Text(
                         "›",
@@ -373,23 +472,67 @@ fun BreadcrumbBar(path: String, onNavigate: (String) -> Unit) {
                     )
                 }
                 TextButton(
-                    onClick = {
-                        val targetPath = "/" + segments.take(index + 1).joinToString("/")
-                        onNavigate(targetPath)
-                    },
+                    onClick = { onNavigate(crumb.path) },
                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                     modifier = Modifier.height(28.dp)
                 ) {
                     Text(
-                        text = if (index == 0 && segment == "storage") "內部儲存"
-                        else if (index == 1 && segment == "emulated") ""
-                        else if (index == 2 && segment == "0") "內部儲存"
-                        else segment,
+                        text = crumb.label,
                         fontSize = 12.sp,
                         maxLines = 1
                     )
                 }
             }
+        }
+    }
+}
+
+// ===== 類別籤列 (手機直向：儲存空間 + 快捷位置,橫向滑動) =====
+@Composable
+fun CategoryChipRow(
+    volumes: List<StorageVolume>,
+    currentPath: String,
+    onNavigate: (String) -> Unit
+) {
+    val selectedShortcut = locationShortcuts.firstOrNull { (_, _, path) ->
+        currentPath == path || currentPath.startsWith("$path/")
+    }
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        // 儲存空間 (內部儲存 / SD 卡)
+        items(volumes.size) { index ->
+            val volume = volumes[index]
+            val isSelected = currentPath == volume.path ||
+                (currentPath.startsWith("${volume.path}/") && selectedShortcut == null)
+            FilterChip(
+                selected = isSelected,
+                onClick = { onNavigate(volume.path) },
+                label = { Text(volume.name, fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Storage,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+        }
+
+        // 快捷位置 (下載 / 圖片 / 影片 / 音樂 / 文件)
+        items(locationShortcuts.size) { index ->
+            val (icon, label, path) = locationShortcuts[index]
+            FilterChip(
+                selected = currentPath == path || currentPath.startsWith("$path/"),
+                onClick = { onNavigate(path) },
+                label = { Text(label, fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            )
         }
     }
 }
@@ -659,6 +802,7 @@ fun ActionBar(
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onSend: () -> Unit,
     singleSelected: Boolean
 ) {
     Surface(
@@ -677,6 +821,7 @@ fun ActionBar(
             if (singleSelected) {
                 ActionButton(Icons.Default.Edit, "重命名", onRename)
             }
+            ActionButton(Icons.Default.Send, "傳送", onSend)
             ActionButton(Icons.Default.Delete, "刪除", onDelete)
             ActionButton(Icons.Default.Share, "分享", onShare)
         }
@@ -698,7 +843,12 @@ private fun ActionButton(icon: ImageVector, label: String, onClick: () -> Unit) 
 
 // ===== 底部快捷列 (非選擇模式) =====
 @Composable
-fun QuickActionBar(onNewFolder: () -> Unit, onSelectAll: () -> Unit, onProperties: () -> Unit = {}) {
+fun QuickActionBar(
+    onNewFolder: () -> Unit,
+    onSelectAll: () -> Unit,
+    onProperties: () -> Unit = {},
+    onBookmark: () -> Unit = {}
+) {
     Surface(tonalElevation = 2.dp) {
         Row(
             modifier = Modifier
@@ -709,7 +859,7 @@ fun QuickActionBar(onNewFolder: () -> Unit, onSelectAll: () -> Unit, onPropertie
         ) {
             ActionButton(Icons.Default.CreateNewFolder, "新增", onNewFolder)
             ActionButton(Icons.Default.SelectAll, "全選", onSelectAll)
-            ActionButton(Icons.Default.BookmarkBorder, "書籤") { /* TODO */ }
+            ActionButton(Icons.Default.BookmarkBorder, "書籤", onBookmark)
             ActionButton(Icons.Default.Info, "屬性", onProperties)
         }
     }
@@ -758,7 +908,10 @@ fun FileContentArea(
     modifier: Modifier = Modifier
 ) {
     var previewImagePath by remember { mutableStateOf<String?>(null) }
-    var previewAudioPath by remember { mutableStateOf<String?>(null) }
+    var audioPlaylist by remember { mutableStateOf<List<FileItem>>(emptyList()) }
+    var audioIndex by remember { mutableStateOf<Int?>(null) }
+    var apkInstallTarget by remember { mutableStateOf<FileItem?>(null) }
+    var archiveTarget by remember { mutableStateOf<FileItem?>(null) }
 
     Box(modifier = modifier) {
         if (uiState.isLoading) {
@@ -782,7 +935,12 @@ fun FileContentArea(
                         } else if (file.fileType == FileType.IMAGE) {
                             previewImagePath = file.path
                         } else if (file.fileType == FileType.AUDIO) {
-                            previewAudioPath = file.path
+                            audioPlaylist = uiState.files.filter { !it.isDirectory && it.fileType == FileType.AUDIO }
+                            audioIndex = audioPlaylist.indexOfFirst { it.path == file.path }.takeIf { it >= 0 }
+                        } else if (file.fileType == FileType.APK) {
+                            apkInstallTarget = file
+                        } else if (file.fileType == FileType.ARCHIVE && ArchiveOperations.isSupported(file.path)) {
+                            archiveTarget = file
                         } else {
                             viewModel.openFile(file)
                         }
@@ -800,7 +958,12 @@ fun FileContentArea(
                         } else if (file.fileType == FileType.IMAGE) {
                             previewImagePath = file.path
                         } else if (file.fileType == FileType.AUDIO) {
-                            previewAudioPath = file.path
+                            audioPlaylist = uiState.files.filter { !it.isDirectory && it.fileType == FileType.AUDIO }
+                            audioIndex = audioPlaylist.indexOfFirst { it.path == file.path }.takeIf { it >= 0 }
+                        } else if (file.fileType == FileType.APK) {
+                            apkInstallTarget = file
+                        } else if (file.fileType == FileType.ARCHIVE && ArchiveOperations.isSupported(file.path)) {
+                            archiveTarget = file
                         } else {
                             viewModel.openFile(file)
                         }
@@ -816,10 +979,31 @@ fun FileContentArea(
             onDismiss = { previewImagePath = null }
         )
     }
-    previewAudioPath?.let { path ->
+    audioIndex?.let { index ->
         AudioPlayerDialog(
-            audioPath = path,
-            onDismiss = { previewAudioPath = null }
+            playlist = audioPlaylist,
+            currentIndex = index,
+            onIndexChange = { audioIndex = it },
+            onDismiss = { audioIndex = null }
+        )
+    }
+    apkInstallTarget?.let { target ->
+        ApkInstallDialog(
+            file = target,
+            onInstall = { viewModel.installApk(target) },
+            onDismiss = { apkInstallTarget = null }
+        )
+    }
+    archiveTarget?.let { target ->
+        ArchiveDialog(
+            file = target,
+            currentDir = uiState.currentPath,
+            onExtracted = { message ->
+                archiveTarget = null
+                viewModel.showInfo(message)
+                viewModel.navigateTo(uiState.currentPath)
+            },
+            onDismiss = { archiveTarget = null }
         )
     }
 }
@@ -835,6 +1019,7 @@ fun FileContentArea(
 fun FileSidebar(
     volumes: List<StorageVolume>,
     currentPath: String,
+    bookmarks: Set<String>,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -879,16 +1064,8 @@ fun FileSidebar(
             )
         }
 
-        val shortcuts = listOf(
-            Triple(Icons.Default.Download, "下載", "/storage/emulated/0/Download"),
-            Triple(Icons.Default.Image, "圖片", "/storage/emulated/0/DCIM"),
-            Triple(Icons.Default.VideoFile, "影片", "/storage/emulated/0/Movies"),
-            Triple(Icons.Default.AudioFile, "音樂", "/storage/emulated/0/Music"),
-            Triple(Icons.Default.Description, "文件", "/storage/emulated/0/Documents"),
-        )
-
-        items(shortcuts.size) { index ->
-            val (icon, label, path) = shortcuts[index]
+        items(locationShortcuts.size) { index ->
+            val (icon, label, path) = locationShortcuts[index]
             SidebarNavItem(
                 icon = icon,
                 label = label,
@@ -897,7 +1074,7 @@ fun FileSidebar(
             )
         }
 
-        // 書籤 (TODO)
+        // 書籤
         item {
             Text(
                 "書籤",
@@ -907,13 +1084,25 @@ fun FileSidebar(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
         }
-        item {
-            Text(
-                "尚無書籤",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-            )
+        if (bookmarks.isEmpty()) {
+            item {
+                Text(
+                    "尚無書籤",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+        } else {
+            items(bookmarks.sorted().size) { index ->
+                val path = bookmarks.sorted()[index]
+                SidebarNavItem(
+                    icon = Icons.Default.Star,
+                    label = path.substringAfterLast('/').ifBlank { path },
+                    isSelected = currentPath == path,
+                    onClick = { onNavigate(path) }
+                )
+            }
         }
     }
 }
@@ -1038,61 +1227,6 @@ fun ImagePreviewDialog(
     }
 }
 
-@Composable
-fun AudioPlayerDialog(
-    audioPath: String,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    var isPlaying by remember { mutableStateOf(false) }
-
-    val mediaPlayer = remember(audioPath) {
-        android.media.MediaPlayer().apply {
-            setDataSource(audioPath)
-            prepare()
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            mediaPlayer.stop()
-            mediaPlayer.release()
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("音樂播放") },
-        text = {
-            Column {
-                Text(File(audioPath).name)
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = {
-                        if (mediaPlayer.isPlaying) {
-                            mediaPlayer.pause()
-                            isPlaying = false
-                        } else {
-                            mediaPlayer.start()
-                            isPlaying = true
-                        }
-                    }
-                ) {
-                    Text(if (isPlaying) "暫停" else "播放")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onDismiss()
-                }
-            ) {
-                Text("關閉")
-            }
-        }
-    )
-}
 
 // ===== FileType 圖示和顏色對應 =====
 val FileType.icon: ImageVector

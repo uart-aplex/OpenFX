@@ -2,6 +2,7 @@ package com.openfx.mobile.ui
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -16,12 +17,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import android.graphics.Color
 import androidx.activity.SystemBarStyle
 import com.openfx.app.platform.Platform
 import com.openfx.app.platform.PlatformDetector
 import com.openfx.app.ui.tv.OpenFXTvTheme
+import com.openfx.app.ui.tv.browser.TvFileBrowserScreen
+import com.openfx.app.ui.tv.devices.TvDevicesScreen
 import com.openfx.app.ui.tv.home.TvHomeScreen
 import com.openfx.mobile.ui.theme.OpenFXTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -59,6 +67,7 @@ class MainActivity : ComponentActivity() {
         //}
 
         requestStoragePermission()
+        requestNotificationPermission()
 //        window.statusBarColor = android.graphics.Color.TRANSPARENT
         setContent {
             when (platformDetector.platform) {
@@ -67,10 +76,44 @@ class MainActivity : ComponentActivity() {
                     OpenFXTvTheme {
                         @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
                         androidx.tv.material3.Surface(modifier = Modifier.fillMaxSize()) {
-                            TvHomeScreen(
-                                onNavigateToFiles = { /* TODO: TV file browser */ },
-                                onNavigateToDevices = { /* TODO: TV device pairing */ },
-                            )
+                            val transferViewModel: com.openfx.mobile.ui.transfer.TransferViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                            val receivedApk by transferViewModel.lastReceivedFilePath.collectAsState()
+                            var tvRoute by remember { mutableStateOf(TvRoute.HOME) }
+                            var tvInitialPath by remember { mutableStateOf<String?>(null) }
+
+                            when (tvRoute) {
+                                TvRoute.HOME -> {
+                                    TvHomeScreen(
+                                        onNavigateToFiles = {
+                                            tvInitialPath = null
+                                            tvRoute = TvRoute.FILES
+                                        },
+                                        onNavigateToDevices = { tvRoute = TvRoute.DEVICES },
+                                    )
+                                }
+
+                                TvRoute.FILES -> {
+                                    TvFileBrowserScreen(
+                                        onBackToHome = { tvRoute = TvRoute.HOME },
+                                        initialPath = tvInitialPath
+                                    )
+                                }
+
+                                TvRoute.DEVICES -> {
+                                    TvDevicesScreen(
+                                        onBackToHome = { tvRoute = TvRoute.HOME },
+                                        onOpenReceivedFiles = { path ->
+                                            tvInitialPath = path
+                                            tvRoute = TvRoute.FILES
+                                        },
+                                        onBrowseFilesToSend = {
+                                            tvInitialPath = null
+                                            tvRoute = TvRoute.FILES
+                                        }
+                                    )
+                                }
+                            }
+                            com.openfx.mobile.ui.browser.ReceivedApkInstallPrompt(receivedApk)
                         }
                     }
                 }
@@ -88,6 +131,17 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private fun requestNotificationPermission() {
+        // API 33+ 需要通知權限才能顯示音樂播放控制與傳輸進度通知
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
             }
         }
     }
@@ -114,4 +168,10 @@ class MainActivity : ComponentActivity() {
             )
         }
     }
+}
+
+private enum class TvRoute {
+    HOME,
+    FILES,
+    DEVICES
 }

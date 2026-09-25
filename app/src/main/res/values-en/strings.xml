@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- OpenFX String Resources — English -->
 <resources>
-    <string name="app_name">OpenFX</string>
+    <string name="app_name">OpenFX File Manager</string>
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
@@ -20,7 +20,7 @@
     <string name="nav_transfer">Transfer</string>
     <string name="nav_settings">Settings</string>
 
-    <string name="browser_title">OpenFX</string>
+    <string name="browser_title">OpenFX File Manager</string>
     <string name="browser_selected_count">%d selected</string>
     <string name="browser_cancel_select">Deselect</string>
     <string name="browser_select_all">Select all</string>
@@ -85,17 +85,17 @@
     <string name="pairing_pin_instruction">Enter this PIN on %s</string>
     <string name="pairing_start">Start pairing</string>
 
-    <string name="control_send_to_tv">Send to TV</string>
-    <string name="control_download_from_tv">Download from TV</string>
-    <string name="control_browse_tv">Browse TV files</string>
-    <string name="control_play_on_tv">Play on TV</string>
+    <string name="control_send_to_tv">Send to device</string>
+    <string name="control_download_from_tv">Download from device</string>
+    <string name="control_browse_tv">Browse device files</string>
+    <string name="control_play_on_tv">Play on device</string>
     <string name="control_quick_actions">Quick actions</string>
-    <string name="control_sync_photos">Sync photos to TV</string>
-    <string name="control_sync_photos_desc">DCIM → TV:/Photos/Phone album</string>
-    <string name="control_sync_videos">Sync videos to TV</string>
-    <string name="control_sync_videos_desc">Movies → TV:/Movies/</string>
-    <string name="control_install_apk">Install APK to TV</string>
-    <string name="control_install_apk_desc">Sideload an APK file to TV</string>
+    <string name="control_sync_photos">Sync photos to device</string>
+    <string name="control_sync_photos_desc">DCIM → remote device:/Photos/</string>
+    <string name="control_sync_videos">Sync videos to device</string>
+    <string name="control_sync_videos_desc">Movies → remote device:/Movies/</string>
+    <string name="control_install_apk">Send APK to device</string>
+    <string name="control_install_apk_desc">Choose an APK file to send to the remote device</string>
     <string name="device_connected">Connected</string>
 
     <string name="transfer_active">Transferring</string>

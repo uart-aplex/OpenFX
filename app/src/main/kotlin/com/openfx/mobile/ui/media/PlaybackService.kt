@@ -1,6 +1,6 @@
 package com.openfx.mobile.ui.media
 
-import androidx.media3.common.MediaItem
+import androidx.media3.common.AudioAttributes
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -8,6 +8,9 @@ import androidx.media3.session.MediaSessionService
 /**
  * 背景音樂播放 Service — 使用 Media3 + MediaSession
  * 讓音樂在背景繼續播放，並支援通知列控制
+ *
+ * UI 端透過 [MusicPlayerManager] 的 MediaController 連接到這裡。
+ * 通知列播放控制由 Media3 MediaSessionService 自動提供。
  */
 class PlaybackService : MediaSessionService() {
 
@@ -15,7 +18,12 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this).build()
+        val player = ExoPlayer.Builder(this)
+            // handleAudioFocus = true：其他 App 搶音訊焦點時自動暫停/降音量
+            .setAudioAttributes(AudioAttributes.DEFAULT, /* handleAudioFocus= */ true)
+            // 拔掉耳機時自動暫停
+            .setHandleAudioBecomingNoisy(true)
+            .build()
         mediaSession = MediaSession.Builder(this, player).build()
     }
 

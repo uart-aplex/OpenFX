@@ -1,12 +1,22 @@
 package com.openfx.mobile.ui.browser
 
 import android.content.Context
+import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.openfx.core.file.*
+import com.openfx.core.settings.SettingsRepository
+import com.openfx.core.sync.TransferManager
+import com.openfx.core.sync.http.LanDeviceScanner
+import com.openfx.core.sync.http.OpenFxDevice
+import com.openfx.mobile.ui.media.VideoPlayerActivity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
@@ -44,6 +54,8 @@ data class BrowserUiState(
     val showSortMenu: Boolean = false,
     val showSearchBar: Boolean = false,
     val showPropertiesDialog: Boolean = false,
+    // 傳送到裝置對話框
+    val showSendDialog: Boolean = false,
     // 剪貼簿 (複製/移動用)
     val clipboard: ClipboardData? = null,
     // 操作進度
@@ -56,15 +68,73 @@ enum class ViewMode { GRID, LIST }
 @HiltViewModel
 class FileBrowserViewModel @Inject constructor(
     private val fileOps: FileOperations,
+    private val transferManager: TransferManager,
+    private val settings: SettingsRepository,
+    private val bookmarkRepo: BookmarkRepository,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BrowserUiState())
     val uiState: StateFlow<BrowserUiState> = _uiState.asStateFlow()
 
+    val bookmarks: StateFlow<Set<String>> = bookmarkRepo.bookmarks
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     init {
         loadStorageVolumes()
+        observeSettings()
         navigateTo(Environment.getExternalStorageDirectory().absolutePath)
+    }
+
+    /** 設定頁的預設值即時套用到瀏覽器 (值有變才 refresh,避免迴圈) */
+    private fun observeSettings() {
+        viewModelScope.launch {
+            settings.showHiddenFiles.collect { value ->
+                if (_uiState.value.showHidden != value) {
+                    _uiState.update { it.copy(showHidden = value) }
+                    refresh()
+                }
+            }
+        }
+        viewModelScope.launch {
+            settings.defaultViewGrid.collect { grid ->
+                val mode = if (grid) ViewMode.GRID else ViewMode.LIST
+                if (_uiState.value.viewMode != mode) {
+                    _uiState.update { it.copy(viewMode = mode) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            settings.sortBy.collect { value ->
+                if (_uiState.value.sortBy != value) {
+                    _uiState.update { it.copy(sortBy = value) }
+                    refresh()
+                }
+            }
+        }
+        viewModelScope.launch {
+            settings.sortAscending.collect { value ->
+                if (_uiState.value.sortAscending != value) {
+                    _uiState.update { it.copy(sortAscending = value) }
+                    refresh()
+                }
+            }
+        }
+    }
+
+    // ===== 書籤 =====
+
+    fun toggleBookmark(path: String) {
+        viewModelScope.launch { bookmarkRepo.toggle(path) }
+    }
+
+    fun removeBookmark(path: String) {
+        viewModelScope.launch { bookmarkRepo.remove(path) }
+    }
+
+    /** 狀態列訊息 (非錯誤的一般提示也走這裡) */
+    fun showInfo(message: String) {
+        _uiState.update { it.copy(error = message) }
     }
 
     // ===== 導航 =====
@@ -99,13 +169,33 @@ class FileBrowserViewModel @Inject constructor(
     }
 
     fun navigateUp(): Boolean {
-        val current = _uiState.value.currentPath
-        val parent = current.substringBeforeLast('/')
-        return if (parent.isNotEmpty() && parent != current) {
-            navigateTo(parent)
+        return if (canNavigateUp) {
+            navigateTo(_uiState.value.currentPath.substringBeforeLast('/'))
             true
         } else false
     }
+
+    /**
+     * 是否還能往上一層 — 以儲存磁區根目錄為樓層下限：
+     * 到達磁區根目錄 (如 /storage/emulated/0) 就不能再往上，
+     * 避免進入 /storage 這種沒有可列內容、也無法脫身的路徑。
+     */
+    val canNavigateUp: Boolean
+        get() {
+            val current = _uiState.value.currentPath
+            val floors = _uiState.value.storageVolumes.map { it.path } +
+                Environment.getExternalStorageDirectory().absolutePath
+
+            if (current in floors) return false
+
+            val parent = current.substringBeforeLast('/')
+            if (parent.isEmpty() || parent == current) return false
+
+            // 父目錄在任何樓層之上 (例如 /storage) — 不上去
+            if (floors.any { it.startsWith("$parent/") }) return false
+
+            return true
+        }
 
     fun goBack(): Boolean {
         val history = _uiState.value.pathHistory
@@ -297,6 +387,24 @@ class FileBrowserViewModel @Inject constructor(
     // ===== 開啟檔案 =====
 
     fun openFile(fileItem: FileItem) {
+        if (fileItem.fileType == FileType.APK) {
+            installApk(fileItem)
+            return
+        }
+        if (fileItem.fileType == FileType.VIDEO) {
+            // 內建播放器 (手機/TV 通用,不依賴外部 App)
+            try {
+                val intent = Intent(appContext, VideoPlayerActivity::class.java).apply {
+                    putExtra(VideoPlayerActivity.EXTRA_PATH, fileItem.path)
+                    putExtra(VideoPlayerActivity.EXTRA_TITLE, fileItem.name)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                appContext.startActivity(intent)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "無法播放: ${e.message}") }
+            }
+            return
+        }
         try {
             val file = File(fileItem.path)
             val uri = FileProvider.getUriForFile(
@@ -304,14 +412,129 @@ class FileBrowserViewModel @Inject constructor(
                 "${appContext.packageName}.fileprovider",
                 file
             )
+            val mimeType = getMimeType(fileItem.path)
+
             val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, fileItem.mimeType ?: getMimeType(fileItem.path))
+                setDataAndType(uri, mimeType)
+                clipData = ClipData.newUri(appContext.contentResolver, file.name, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             appContext.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            _uiState.update { it.copy(error = "找不到可以開啟此檔案的應用程式") }
         } catch (e: Exception) {
             _uiState.update { it.copy(error = "無法開啟: ${e.message}") }
+        }
+    }
+
+    // ===== 安裝 APK =====
+
+    fun installApk(fileItem: FileItem) {
+        // API 26+ 需要先取得「安裝未知應用」權限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !appContext.packageManager.canRequestPackageInstalls()
+        ) {
+            try {
+                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${appContext.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                appContext.startActivity(settingsIntent)
+                _uiState.update {
+                    it.copy(error = "請允許 OpenFX 安裝未知應用程式，返回後再按一次「安裝」")
+                }
+            } catch (e: Exception) {
+                // 部分 TV ROM 沒有這個設定頁
+                _uiState.update {
+                    it.copy(error = "請手動到系統設定允許 OpenFX 安裝未知應用程式")
+                }
+            }
+            return
+        }
+
+        try {
+            val file = File(fileItem.path)
+            val uri = FileProvider.getUriForFile(
+                appContext,
+                "${appContext.packageName}.fileprovider",
+                file
+            )
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, getMimeType(fileItem.path))
+                clipData = ClipData.newUri(appContext.contentResolver, file.name, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            try {
+                appContext.startActivity(installIntent)
+            } catch (e: ActivityNotFoundException) {
+                // 部分裝置 (尤其 TV) 的安裝器只認舊版 action
+                val fallback = Intent("android.intent.action.INSTALL_PACKAGE").apply {
+                    data = uri
+                    clipData = ClipData.newUri(appContext.contentResolver, file.name, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                appContext.startActivity(fallback)
+            }
+        } catch (e: Exception) {
+            _uiState.update { it.copy(error = "無法安裝: ${e.message}") }
+        }
+    }
+
+    // ===== 傳送到 OpenFX 裝置 =====
+
+    private val _sendDevices = MutableStateFlow<List<OpenFxDevice>>(emptyList())
+    val sendDevices: StateFlow<List<OpenFxDevice>> = _sendDevices.asStateFlow()
+
+    private val _isScanningSendDevices = MutableStateFlow(false)
+    val isScanningSendDevices: StateFlow<Boolean> = _isScanningSendDevices.asStateFlow()
+
+    fun openSendDialog() {
+        if (_uiState.value.selectedFiles.isEmpty()) return
+        _uiState.update { it.copy(showSendDialog = true) }
+        scanSendDevices()
+    }
+
+    fun closeSendDialog() {
+        _uiState.update { it.copy(showSendDialog = false) }
+    }
+
+    fun scanSendDevices() {
+        if (_isScanningSendDevices.value) return
+        _isScanningSendDevices.value = true
+        viewModelScope.launch {
+            val myIp = LanDeviceScanner.getLocalIpAddress()
+            _sendDevices.value = transferManager.discoverDevices()
+                .filterNot { it.ip == myIp }
+            _isScanningSendDevices.value = false
+        }
+    }
+
+    fun sendSelectedTo(device: OpenFxDevice) {
+        val paths = _uiState.value.selectedFiles.toList()
+            .map(::File)
+            .filter { it.isFile }
+            .map { it.absolutePath }
+
+        if (paths.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    showSendDialog = false,
+                    error = "選取項目沒有可傳送的檔案（資料夾請先壓縮）"
+                )
+            }
+            return
+        }
+
+        transferManager.sendFiles(paths, device)
+        _uiState.update {
+            it.copy(
+                showSendDialog = false,
+                selectedFiles = emptySet(),
+                error = "已加入 ${paths.size} 個傳送任務，到「傳檔」頁查看進度"
+            )
         }
     }
 
@@ -386,6 +609,8 @@ class FileBrowserViewModel @Inject constructor(
 
     private fun getMimeType(path: String): String {
         val ext = path.substringAfterLast('.', "").lowercase()
+        if (ext == "apk") return "application/vnd.android.package-archive"
+
         return android.webkit.MimeTypeMap.getSingleton()
             .getMimeTypeFromExtension(ext) ?: "*/*"
     }

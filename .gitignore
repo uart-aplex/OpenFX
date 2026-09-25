@@ -29,3 +29,13 @@ local.properties
 
 # User-specific
 *.log
+/.idea/
+/.claude/
+
+# Local device-test screenshots (keep product image assets under app/src/main/res)
+/phone-*.png
+/tv-*.png
+/ai-*.png
+
+# Local install packages kept with filesystem backups, not source control
+/dist/*.apk
