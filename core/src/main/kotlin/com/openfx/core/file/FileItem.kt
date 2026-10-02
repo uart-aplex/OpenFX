@@ -48,7 +48,7 @@ enum class FileType {
                 lower in audioExts -> AUDIO
                 lower in docExts -> DOCUMENT
                 lower in archiveExts -> ARCHIVE
-                lower == "apk" -> APK
+                lower == "apk" || lower == "apks" -> APK
                 lower in codeExts -> CODE
                 else -> OTHER
             }

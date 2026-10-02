@@ -15,8 +15,9 @@ android {
         applicationId = "com.openfx.mobile"
         minSdk = Versions.minSdk
         targetSdk = Versions.targetSdk
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.2.2"
+        testInstrumentationRunner = "com.openfx.mobile.apps.AppTransferInstrumentation"
     }
 
     buildTypes {
@@ -43,6 +44,7 @@ android {
 }
 
 dependencies {
+    testImplementation(Deps.junit)
     implementation(project(":core"))
 
     // Compose (Mobile)

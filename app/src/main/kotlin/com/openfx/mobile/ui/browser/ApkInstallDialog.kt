@@ -21,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -33,6 +35,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openfx.common.util.drawableToImageBitmap
 import com.openfx.core.file.FileItem
+import com.openfx.mobile.apps.AppPackageArchive
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.zip.ZipFile
 
 /**
  * APK 詳情 (安裝前顯示)
@@ -46,6 +53,31 @@ private data class ApkInfo(
 )
 
 private fun loadApkInfo(context: Context, path: String): ApkInfo? {
+    if (path.endsWith(".apks", ignoreCase = true)) {
+        return runCatching {
+            val base = File.createTempFile("apk_preview_", ".apk", context.cacheDir)
+            try {
+                ZipFile(path).use { zip ->
+                    val entry = AppPackageArchive.entries(zip).first { it.name == "base.apk" }
+                    zip.getInputStream(entry).use { input ->
+                        base.outputStream().use { output ->
+                            val buffer = ByteArray(64 * 1024)
+                            var copied = 0L
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                copied += count
+                                require(copied <= entry.size)
+                                output.write(buffer, 0, count)
+                            }
+                            require(copied == entry.size)
+                        }
+                    }
+                }
+                loadApkInfo(context, base.absolutePath)
+            } finally { base.delete() }
+        }.getOrNull()
+    }
     return runCatching {
         val pm = context.packageManager
         val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -88,7 +120,12 @@ fun ApkInstallDialog(
 ) {
     val context = LocalContext.current
     val isTv = LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
-    val info = remember(file.path) { loadApkInfo(context, file.path) }
+    val loading = remember(file.path) { androidx.compose.runtime.mutableStateOf(true) }
+    val loadedInfo by produceState<ApkInfo?>(null, file.path) {
+        value = withContext(Dispatchers.IO) { loadApkInfo(context, file.path) }
+        loading.value = false
+    }
+    val info = loadedInfo
 
     AlertDialog(
         modifier = if (isTv) Modifier.width(600.dp) else Modifier,
@@ -130,7 +167,9 @@ fun ApkInstallDialog(
                     }
                 }
 
-                if (info == null) {
+                if (loading.value) {
+                    androidx.compose.material3.CircularProgressIndicator()
+                } else if (info == null) {
                     Text(
                         "無法讀取 APK 資訊，檔案可能已損壞。",
                         fontSize = 12.sp,
@@ -164,7 +203,7 @@ fun ApkInstallDialog(
             if (isTv) {
                 androidx.tv.material3.Button(
                     onClick = { onDismiss(); onInstall() },
-                    enabled = info != null,
+                    enabled = info != null && !loading.value,
                     colors = androidx.tv.material3.ButtonDefaults.colors(
                         containerColor = Color(0xFF0D6B4D), contentColor = Color.White,
                         focusedContainerColor = Color(0xFF57E3A1), focusedContentColor = Color(0xFF062B1C)
@@ -176,7 +215,7 @@ fun ApkInstallDialog(
                     onDismiss()
                     onInstall()
                 },
-                enabled = info != null
+                enabled = info != null && !loading.value
             ) { Text("安裝") }
             }
         },

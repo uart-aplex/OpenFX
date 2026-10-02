@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
@@ -33,6 +34,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -51,6 +55,9 @@ import com.openfx.core.sync.TransferDirection
 import com.openfx.core.sync.TransferStatus
 import com.openfx.core.sync.TransferTask
 import com.openfx.mobile.ui.transfer.TransferViewModel
+import com.openfx.core.sync.http.OpenFxDevice
+import com.openfx.mobile.apps.InstalledAppsDialog
+import com.openfx.mobile.R
 import java.io.File
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -69,6 +76,9 @@ fun TvDevicesScreen(
     val isScanning by viewModel.isScanning.collectAsState()
     val activeTasks by viewModel.activeTasks.collectAsState()
     val history by viewModel.history.collectAsState()
+    val preparingApps by viewModel.preparingApps.collectAsState()
+    val statusMessage by viewModel.statusMessage.collectAsState()
+    var appSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
     val receiveButtonFocusRequester = remember { FocusRequester() }
     val receivingTask = activeTasks.firstOrNull {
         it.direction == TransferDirection.RECEIVE && it.status == TransferStatus.ACTIVE
@@ -221,9 +231,17 @@ fun TvDevicesScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(36.dp))
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(device.deviceName, style = MaterialTheme.typography.titleMedium)
                                 Text("${device.ip}:${device.port} · 可傳檔", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Button(onClick = {
+                                viewModel.consumeStatusMessage()
+                                appSendTarget = device
+                            }) {
+                                Icon(Icons.Default.Android, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.apps_send_installed))
                             }
                         }
                     }
@@ -231,6 +249,17 @@ fun TvDevicesScreen(
         }
     }
 
+    appSendTarget?.let { device ->
+        InstalledAppsDialog(
+            deviceName = device.deviceName,
+            preparing = preparingApps,
+            status = statusMessage,
+            onDismiss = { viewModel.cancelAppPreparation(); appSendTarget = null },
+            onSend = { packages ->
+                viewModel.sendInstalledApps(packages, device) { appSendTarget = null }
+            }
+        )
+    }
 }
 
 @Composable

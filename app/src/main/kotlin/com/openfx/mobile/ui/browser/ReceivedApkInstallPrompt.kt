@@ -21,18 +21,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.openfx.core.file.FileItem
+import com.openfx.mobile.apps.AppPackageInstallerActivity
 import java.io.File
 
 private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
 
 /** 手機、TV 與車載 AI BOX 共用的「接收 APK 後安裝」流程。 */
 @Composable
-fun ReceivedApkInstallPrompt(lastReceivedFilePath: String?) {
+fun ReceivedApkInstallPrompt(pendingPaths: List<String>, onHandled: (String) -> Unit) {
     val context = LocalContext.current
     var apkToInstall by remember { mutableStateOf<FileItem?>(null) }
     var pendingPermissionFile by remember { mutableStateOf<File?>(null) }
     var installError by remember { mutableStateOf<String?>(null) }
-    var lastPromptedPath by remember { mutableStateOf<String?>(null) }
+    val pendingPath = pendingPaths.firstOrNull()
 
     val unknownSourcesLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -46,12 +47,11 @@ fun ReceivedApkInstallPrompt(lastReceivedFilePath: String?) {
         }
     }
 
-    LaunchedEffect(lastReceivedFilePath) {
-        val path = lastReceivedFilePath ?: return@LaunchedEffect
-        if (path.endsWith(".apk", ignoreCase = true) && path != lastPromptedPath) {
+    LaunchedEffect(pendingPath) {
+        val path = pendingPath ?: return@LaunchedEffect
+        if (path.endsWith(".apk", ignoreCase = true) || path.endsWith(".apks", ignoreCase = true)) {
             val file = File(path)
             if (file.isFile) {
-                lastPromptedPath = path
                 apkToInstall = FileItem(
                     name = file.name,
                     path = file.absolutePath,
@@ -60,7 +60,7 @@ fun ReceivedApkInstallPrompt(lastReceivedFilePath: String?) {
                     isDirectory = false,
                     mimeType = APK_MIME_TYPE
                 )
-            }
+            } else onHandled(path)
         }
     }
 
@@ -70,7 +70,10 @@ fun ReceivedApkInstallPrompt(lastReceivedFilePath: String?) {
             received = true,
             onInstall = {
                 val file = File(apk.path)
-                if (canInstallUnknownApps(context)) {
+                if (file.extension.equals("apks", ignoreCase = true)) {
+                    runCatching { context.startActivity(AppPackageInstallerActivity.intent(context, file)) }
+                        .onFailure { installError = it.message }
+                } else if (canInstallUnknownApps(context)) {
                     installError = launchApkInstaller(context, file)
                 } else {
                     pendingPermissionFile = file
@@ -86,7 +89,7 @@ fun ReceivedApkInstallPrompt(lastReceivedFilePath: String?) {
                     }
                 }
             },
-            onDismiss = { apkToInstall = null }
+            onDismiss = { apkToInstall = null; onHandled(apk.path) }
         )
     }
 

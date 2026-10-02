@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                         @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
                         androidx.tv.material3.Surface(modifier = Modifier.fillMaxSize()) {
                             val transferViewModel: com.openfx.mobile.ui.transfer.TransferViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-                            val receivedApk by transferViewModel.lastReceivedFilePath.collectAsState()
+                            val pendingAppInstalls by transferViewModel.pendingAppInstalls.collectAsState()
                             var tvRoute by remember { mutableStateOf(TvRoute.HOME) }
                             var tvInitialPath by remember { mutableStateOf<String?>(null) }
 
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                            com.openfx.mobile.ui.browser.ReceivedApkInstallPrompt(receivedApk)
+                            com.openfx.mobile.ui.browser.ReceivedApkInstallPrompt(pendingAppInstalls, transferViewModel::consumeReceivedApp)
                         }
                     }
                 }

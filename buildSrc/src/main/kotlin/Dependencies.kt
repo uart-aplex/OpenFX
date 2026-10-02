@@ -42,9 +42,11 @@ object Versions {
 
     // Coroutines
     const val coroutines = "1.9.0"
+    const val junit = "4.12"
 }
 
 object Deps {
+    const val junit = "junit:junit:${Versions.junit}"
     // Kotlin
     const val kotlinSerialization = "org.jetbrains.kotlinx:kotlinx-serialization-json:${Versions.serialization}"
     const val coroutinesCore = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.coroutines}"

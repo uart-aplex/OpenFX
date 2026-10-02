@@ -12,14 +12,19 @@ import com.openfx.core.sync.TransferTask
 import com.openfx.core.sync.http.LanDeviceScanner
 import com.openfx.core.sync.http.OpenFxDevice
 import com.openfx.core.settings.SettingsRepository
+import com.openfx.mobile.R
+import com.openfx.mobile.apps.InstalledAppsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
 import javax.inject.Inject
@@ -28,6 +33,7 @@ import javax.inject.Inject
 class TransferViewModel @Inject constructor(
     private val transferManager: TransferManager,
     private val settings: SettingsRepository,
+    private val installedApps: InstalledAppsRepository,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -36,6 +42,9 @@ class TransferViewModel @Inject constructor(
     val receivedCount: StateFlow<Int> = transferManager.receivedCount
     val receiveDir: StateFlow<String?> = transferManager.receiveDir
     val lastReceivedFilePath: StateFlow<String?> = transferManager.lastReceivedFilePath
+    val pendingAppInstalls = transferManager.pendingAppInstalls
+
+    fun consumeReceivedApp(path: String) = transferManager.consumeReceivedApp(path)
     val activeTasks: StateFlow<List<TransferTask>> = transferManager.activeTasks
     val history: StateFlow<List<TransferTask>> = transferManager.history
     val lastEvent: StateFlow<String?> = transferManager.lastEvent
@@ -49,6 +58,10 @@ class TransferViewModel @Inject constructor(
 
     private val _statusMessage = MutableStateFlow<String?>(null)
     val statusMessage: StateFlow<String?> = _statusMessage.asStateFlow()
+
+    private val _preparingApps = MutableStateFlow(false)
+    val preparingApps = _preparingApps.asStateFlow()
+    private var appExportJob: Job? = null
 
     val localIp: String?
         get() = LanDeviceScanner.getLocalIpAddress()
@@ -101,6 +114,55 @@ class TransferViewModel @Inject constructor(
     }
 
     // ===== 傳送 =====
+
+    fun sendInstalledApps(packageNames: List<String>, device: OpenFxDevice, onQueued: () -> Unit) {
+        if (_preparingApps.value || packageNames.isEmpty()) return
+        _preparingApps.value = true
+        appExportJob = viewModelScope.launch(Dispatchers.IO) {
+            var queued = 0
+            var failed = 0
+            try {
+                val senderName = settings.deviceName.first()
+                packageNames.distinct().forEachIndexed { index, packageName ->
+                    _statusMessage.value = appContext.getString(
+                        R.string.apps_preparing_progress, index + 1, packageNames.size
+                    )
+                    var exported: File? = null
+                    try {
+                        val file = installedApps.export(packageName)
+                        exported = file
+                        transferManager.sendStream(
+                            fileName = file.name,
+                            contentLength = file.length(),
+                            device = device,
+                            senderDeviceName = senderName,
+                            onFinished = { file.delete(); file.parentFile?.delete() }
+                        ) { file.inputStream() }
+                        exported = null // TransferManager now owns the snapshot until upload ends.
+                        queued++
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        failed++
+                    } finally {
+                        exported?.let { it.delete(); it.parentFile?.delete() }
+                    }
+                }
+                _statusMessage.value = if (queued == 0) {
+                    appContext.getString(R.string.apps_export_failed)
+                } else {
+                    appContext.getString(R.string.apps_queued, queued, failed, device.deviceName)
+                }
+                if (queued > 0) withContext(Dispatchers.Main) { onQueued() }
+            } finally {
+                _preparingApps.value = false
+            }
+        }
+    }
+
+    fun cancelAppPreparation() {
+        appExportJob?.cancel()
+    }
 
     fun sendUris(uris: List<Uri>, device: OpenFxDevice) {
         _statusMessage.value = "正在準備 ${uris.size} 個檔案…"

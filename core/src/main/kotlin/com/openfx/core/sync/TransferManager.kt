@@ -54,6 +54,13 @@ class TransferManager @Inject constructor() {
     private val _lastReceivedFilePath = MutableStateFlow<String?>(null)
     val lastReceivedFilePath: StateFlow<String?> = _lastReceivedFilePath.asStateFlow()
 
+    private val _pendingAppInstalls = MutableStateFlow<List<String>>(emptyList())
+    val pendingAppInstalls = _pendingAppInstalls.asStateFlow()
+
+    fun consumeReceivedApp(path: String) {
+        _pendingAppInstalls.update { it.filterNot { pending -> pending == path } }
+    }
+
     private val _activeTasks = MutableStateFlow<List<TransferTask>>(emptyList())
     val activeTasks: StateFlow<List<TransferTask>> = _activeTasks.asStateFlow()
 
@@ -83,6 +90,9 @@ class TransferManager @Inject constructor() {
                 onFileReceived = { file, senderDeviceName ->
                     _receivedCount.update { it + 1 }
                     _lastReceivedFilePath.value = file.absolutePath
+                    if (file.extension.lowercase() in setOf("apk", "apks")) {
+                        _pendingAppInstalls.update { it + file.absolutePath }
+                    }
                     _lastEvent.value = "已從 $senderDeviceName 接收 ${file.name}"
                 },
                 onError = { message ->
@@ -219,9 +229,10 @@ class TransferManager @Inject constructor() {
         contentLength: Long,
         device: OpenFxDevice,
         senderDeviceName: String = "OpenFX Device",
+        onFinished: () -> Unit = {},
         openStream: () -> InputStream
     ): String {
-        return startUpload(fileName, contentLength, device) { handle, taskId ->
+        return startUpload(fileName, contentLength, device, onFinished) { handle, taskId ->
             openStream().use { input ->
                 OpenFxHttpSender.uploadStream(
                     targetIp = device.ip,
@@ -241,6 +252,7 @@ class TransferManager @Inject constructor() {
         fileName: String,
         size: Long,
         device: OpenFxDevice,
+        onFinished: () -> Unit = {},
         upload: (OpenFxHttpSender.UploadHandle, String) -> Boolean
     ): String {
         val taskId = UUID.randomUUID().toString().take(8)
@@ -275,6 +287,7 @@ class TransferManager @Inject constructor() {
                 }
             } finally {
                 uploads.remove(taskId)
+                onFinished()
             }
         }
 

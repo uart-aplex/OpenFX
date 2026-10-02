@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -57,6 +58,8 @@ private val navItems = listOf(
  */
 @Composable
 fun OpenFXNavHost() {
+    val transferViewModel: com.openfx.mobile.ui.transfer.TransferViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val pendingAppInstalls by transferViewModel.pendingAppInstalls.collectAsState()
     val layoutInfo = rememberAdaptiveLayoutInfo()
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -131,4 +134,5 @@ fun OpenFXNavHost() {
             }
         }
     }
+    com.openfx.mobile.ui.browser.ReceivedApkInstallPrompt(pendingAppInstalls, transferViewModel::consumeReceivedApp)
 }

@@ -431,6 +431,14 @@ class FileBrowserViewModel @Inject constructor(
     // ===== 安裝 APK =====
 
     fun installApk(fileItem: FileItem) {
+        if (fileItem.extension.equals("apks", ignoreCase = true)) {
+            runCatching {
+                appContext.startActivity(com.openfx.mobile.apps.AppPackageInstallerActivity.intent(appContext, File(fileItem.path)))
+            }.onFailure { error ->
+                _uiState.update { it.copy(error = "無法安裝: ${error.message}") }
+            }
+            return
+        }
         // API 26+ 需要先取得「安裝未知應用」權限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             !appContext.packageManager.canRequestPackageInstalls()

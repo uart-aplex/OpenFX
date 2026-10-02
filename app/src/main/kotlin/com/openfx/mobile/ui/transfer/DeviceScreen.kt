@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,9 +53,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.openfx.core.sync.http.OpenFxDevice
-import com.openfx.mobile.ui.browser.ReceivedApkInstallPrompt
+import com.openfx.mobile.apps.InstalledAppsDialog
+import com.openfx.mobile.R
 
 /**
  * 裝置頁 — 接收開關 + 掃描附近 OpenFX 裝置 + 傳送檔案
@@ -71,15 +74,16 @@ fun DeviceScreen(
     val isReceiving by viewModel.isReceiving.collectAsState()
     val receivedCount by viewModel.receivedCount.collectAsState()
     val receiveDir by viewModel.receiveDir.collectAsState()
-    val lastReceivedFilePath by viewModel.lastReceivedFilePath.collectAsState()
     val lastEvent by viewModel.lastEvent.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
     val activeTasks by viewModel.activeTasks.collectAsState()
+    val preparingApps by viewModel.preparingApps.collectAsState()
 
     var selectedDevice by remember { mutableStateOf<OpenFxDevice?>(null) }
     var pendingSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
+    var appSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
 
     val sendPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -235,6 +239,19 @@ fun DeviceScreen(
                     Spacer(Modifier.width(8.dp))
                     Text("傳送檔案（可複選）")
                 }
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        viewModel.consumeStatusMessage()
+                        appSendTarget = device
+                        selectedDevice = null
+                    }
+                ) {
+                    Icon(Icons.Default.Android, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.apps_send_installed))
+                }
                 Text(
                     "傳送進度請到下方「傳檔」分頁查看",
                     fontSize = 11.sp,
@@ -245,7 +262,24 @@ fun DeviceScreen(
         }
     }
 
-    ReceivedApkInstallPrompt(lastReceivedFilePath)
+    appSendTarget?.let { device ->
+        InstalledAppsDialog(
+            deviceName = device.deviceName,
+            preparing = preparingApps,
+            status = statusMessage,
+            onDismiss = {
+                viewModel.cancelAppPreparation()
+                appSendTarget = null
+            },
+            onSend = { packages ->
+                viewModel.sendInstalledApps(packages, device) {
+                    appSendTarget = null
+                    onTransferStarted()
+                }
+            }
+        )
+    }
+
 }
 
 // ===== 雷達動畫 + 附近裝置列表 =====
