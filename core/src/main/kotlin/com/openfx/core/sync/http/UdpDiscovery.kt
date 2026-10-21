@@ -28,7 +28,11 @@ object UdpDiscovery {
      * 啟動回應器，讓其他裝置找得到本機。
      * 回傳的 [Closeable] close() 後停止回應。
      */
-    fun startAdvertiser(deviceName: String, httpPort: Int = OpenFxHttpSender.DEFAULT_PORT): Closeable {
+    fun startAdvertiser(
+        deviceName: String,
+        httpPort: Int = OpenFxHttpSender.DEFAULT_PORT,
+        deviceId: String = ""
+    ): Closeable {
         val socket = DatagramSocket(null).apply {
             reuseAddress = true
             bind(InetSocketAddress(DISCOVERY_PORT))
@@ -46,7 +50,9 @@ object UdpDiscovery {
                     val message = String(packet.data, 0, packet.length, Charsets.UTF_8)
                     if (message == REQUEST) {
                         val safeName = deviceName.replace("|", " ")
-                        val payload = "$RESPONSE_PREFIX$safeName|$httpPort".toByteArray(Charsets.UTF_8)
+                        // 第 3 欄 deviceId 是 0.3 新增；舊版掃描端只讀前兩欄，相容
+                        val payload = "$RESPONSE_PREFIX$safeName|$httpPort|$deviceId"
+                            .toByteArray(Charsets.UTF_8)
                         socket.send(DatagramPacket(payload, payload.size, packet.address, packet.port))
                     }
                 } catch (_: SocketTimeoutException) {
@@ -106,8 +112,9 @@ object UdpDiscovery {
                         val parts = message.removePrefix(RESPONSE_PREFIX).split("|")
                         val name = parts.getOrNull(0)?.takeIf { it.isNotBlank() } ?: "OpenFX Device"
                         val port = parts.getOrNull(1)?.toIntOrNull() ?: OpenFxHttpSender.DEFAULT_PORT
+                        val deviceId = parts.getOrNull(2)?.takeIf { it.isNotBlank() }
                         val ip = packet.address.hostAddress ?: continue
-                        found[ip] = OpenFxDevice(ip = ip, deviceName = name, port = port)
+                        found[ip] = OpenFxDevice(ip = ip, deviceName = name, port = port, deviceId = deviceId)
                     }
                 } catch (_: SocketTimeoutException) {
                     // 繼續等到 deadline

@@ -174,4 +174,23 @@
     <string name="apps_install_success">安装完成</string>
     <string name="apps_close">关闭</string>
     <string name="apps_install_incompatible_cpu">这个 App 的安装包不支持此设备的处理器，请从兼容设备或商店获取安装文件</string>
+
+    <!-- 儲存權限 / 傳檔配對 -->
+    <string name="storage_access_title">需要文件访问权限</string>
+    <string name="storage_access_message">这台设备没有提供“所有文件访问权限”设置页面 (Android TV 常见)。
+
+请在电脑用 adb 执行以下命令后重新打开 OpenFX：
+
+%1$s</string>
+    <string name="storage_access_open_settings">打开应用信息</string>
+    <string name="storage_access_later">稍后</string>
+    <string name="pairing_pin_title">输入配对码</string>
+    <string name="pairing_pin_message">请输入“%1$s”接收界面上显示的 6 位数配对码。</string>
+    <string name="pairing_pin_hint">配对码</string>
+    <string name="pairing_pin_wrong">配对码错误，请再试一次</string>
+    <string name="pairing_pin_locked">尝试次数过多，请稍后再试</string>
+    <string name="pairing_pin_unreachable">无法连接到对方设备</string>
+    <string name="pairing_pin_confirm">配对</string>
+    <string name="pairing_pin_display">配对码 %1$s</string>
+    <string name="pairing_pin_regenerate">更换配对码</string>
 </resources>

@@ -3,13 +3,17 @@ package com.openfx.core.settings
 import android.content.Context
 import android.os.Build
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.openfx.core.file.SortBy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.security.SecureRandom
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,6 +36,8 @@ class SettingsRepository @Inject constructor(
         val SORT_ASC = booleanPreferencesKey("default_sort_ascending")
         val DEVICE_NAME = stringPreferencesKey("device_name")
         val TRANSFER_NOTIFY = booleanPreferencesKey("transfer_complete_notify")
+        val DEVICE_ID = stringPreferencesKey("device_id")
+        val RECEIVE_PIN = stringPreferencesKey("receive_pin")
     }
 
     /** 未設定時的預設裝置名稱 (廠牌 + 型號) */
@@ -88,5 +94,49 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setTransferCompleteNotify(value: Boolean) {
         context.settingsDataStore.edit { it[Keys.TRANSFER_NOTIFY] = value }
+    }
+
+    // ===== 傳檔配對 =====
+
+    /** 本機固定識別碼 — 讓傳送端在 IP 變動後仍認得這台接收端 (第一次讀取時產生) */
+    suspend fun deviceId(): String = getOrCreate(Keys.DEVICE_ID) {
+        UUID.randomUUID().toString()
+    }
+
+    /** 本機接收用的 6 位數配對碼 (第一次讀取時產生) */
+    val receivePin: Flow<String?> =
+        context.settingsDataStore.data.map { it[Keys.RECEIVE_PIN] }
+
+    suspend fun receivePinOrCreate(): String = getOrCreate(Keys.RECEIVE_PIN, ::newPin)
+
+    suspend fun regenerateReceivePin(): String {
+        val pin = newPin()
+        context.settingsDataStore.edit { it[Keys.RECEIVE_PIN] = pin }
+        return pin
+    }
+
+    /** 對其他接收端輸入過且驗證成功的配對碼，key 為對方 deviceId (舊版接收端用 ip:port) */
+    suspend fun peerPin(peerKey: String): String? =
+        context.settingsDataStore.data.first()[peerPinKey(peerKey)]
+
+    suspend fun setPeerPin(peerKey: String, pin: String?) {
+        context.settingsDataStore.edit {
+            if (pin == null) it.remove(peerPinKey(peerKey)) else it[peerPinKey(peerKey)] = pin
+        }
+    }
+
+    private fun peerPinKey(peerKey: String) = stringPreferencesKey("peer_pin_$peerKey")
+
+    private fun newPin(): String = "%06d".format(SecureRandom().nextInt(1_000_000))
+
+    private suspend fun getOrCreate(
+        key: Preferences.Key<String>,
+        create: () -> String
+    ): String {
+        var value: String? = null
+        context.settingsDataStore.edit { prefs ->
+            value = prefs[key] ?: create().also { prefs[key] = it }
+        }
+        return value!!
     }
 }

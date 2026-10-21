@@ -174,4 +174,23 @@
     <string name="apps_install_success">Installation complete</string>
     <string name="apps_close">Close</string>
     <string name="apps_install_incompatible_cpu">This app package does not support this device processor. Get a compatible package from another device or the store.</string>
+
+    <!-- 儲存權限 / 傳檔配對 -->
+    <string name="storage_access_title">File access needed</string>
+    <string name="storage_access_message">This device has no \"All files access\" settings page (common on Android TV).
+
+Run this adb command from a computer, then reopen OpenFX:
+
+%1$s</string>
+    <string name="storage_access_open_settings">Open app info</string>
+    <string name="storage_access_later">Later</string>
+    <string name="pairing_pin_title">Enter pairing code</string>
+    <string name="pairing_pin_message">Enter the 6-digit pairing code shown on the receive screen of \"%1$s\".</string>
+    <string name="pairing_pin_hint">Pairing code</string>
+    <string name="pairing_pin_wrong">Wrong pairing code, try again</string>
+    <string name="pairing_pin_locked">Too many attempts, please wait and try again</string>
+    <string name="pairing_pin_unreachable">Cannot reach the other device</string>
+    <string name="pairing_pin_confirm">Pair</string>
+    <string name="pairing_pin_display">Pairing code %1$s</string>
+    <string name="pairing_pin_regenerate">New pairing code</string>
 </resources>

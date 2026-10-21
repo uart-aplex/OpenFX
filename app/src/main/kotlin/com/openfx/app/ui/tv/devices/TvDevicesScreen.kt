@@ -71,6 +71,7 @@ fun TvDevicesScreen(
     val isReceiving by viewModel.isReceiving.collectAsState()
     val receivedCount by viewModel.receivedCount.collectAsState()
     val receiveDir by viewModel.receiveDir.collectAsState()
+    val receivePin by viewModel.receivePin.collectAsState()
     val lastEvent by viewModel.lastEvent.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -168,6 +169,19 @@ fun TvDevicesScreen(
                     style = MaterialTheme.typography.headlineSmall
                 )
                 Text("${viewModel.localIp ?: "取得 IP 中"}:8989  ·  已接收 $receivedCount 個", style = MaterialTheme.typography.bodyMedium)
+                receivePin?.let { pin ->
+                    // 遙控器距離遠 — 配對碼用大字顯示，手機端輸入時要看得清楚
+                    Text(
+                        stringResource(R.string.pairing_pin_display, pin),
+                        color = stateColor,
+                        style = MaterialTheme.typography.displaySmall
+                    )
+                }
+            }
+            if (isReceiving) {
+                Button(onClick = viewModel::regenerateReceivePin) {
+                    Text(stringResource(R.string.pairing_pin_regenerate))
+                }
             }
             Button(
                 onClick = { if (isReceiving) viewModel.stopReceive() else viewModel.startReceive() },

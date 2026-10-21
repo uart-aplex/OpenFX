@@ -55,12 +55,11 @@ import com.openfx.core.file.FileItem
 import com.openfx.core.file.FileType
 import com.openfx.core.sync.http.LanDeviceScanner
 import com.openfx.core.sync.http.OpenFxDevice
-import com.openfx.core.sync.http.OpenFxHttpSender
 import com.openfx.core.sync.http.UdpDiscovery
 import com.openfx.mobile.ui.browser.AudioPlayerDialog
 import com.openfx.mobile.ui.browser.FileBrowserViewModel
+import com.openfx.mobile.ui.transfer.TransferViewModel
 import androidx.compose.runtime.collectAsState
-import java.io.File
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -275,7 +274,8 @@ private fun TvFileItemCard(
 @Composable
 private fun TvSendFileDialog(
     file: FileItem,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    transferViewModel: TransferViewModel = hiltViewModel()
 ) {
     var devices by remember { mutableStateOf<List<OpenFxDevice>>(emptyList()) }
     var statusText by remember { mutableStateOf("掃描附近接收端...") }
@@ -334,29 +334,9 @@ private fun TvSendFileDialog(
                     androidx.compose.material3.OutlinedButton(
                         enabled = !isSending,
                         onClick = {
-                            isSending = true
-                            statusText = "正在傳送到 ${device.deviceName}..."
-
-                            Thread {
-                                val success = try {
-                                    OpenFxHttpSender.uploadFile(
-                                        targetIp = device.ip,
-                                        port = device.port,
-                                        file = File(file.path)
-                                    )
-                                } catch (_: Exception) {
-                                    false
-                                }
-
-                                Handler(Looper.getMainLooper()).post {
-                                    isSending = false
-                                    statusText = if (success) {
-                                        "已傳送到 ${device.deviceName}"
-                                    } else {
-                                        "傳送失敗，請確認對方仍在接收模式"
-                                    }
-                                }
-                            }.start()
+                            // 交給 TransferManager：需要配對碼時會跳出輸入框，進度顯示在「裝置」頁
+                            transferViewModel.sendFiles(listOf(file.path), device)
+                            onDismiss()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {

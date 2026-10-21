@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.openfx.core.sync.PinRequest
 import com.openfx.core.sync.TransferManager
 import com.openfx.core.sync.TransferTask
 import com.openfx.core.sync.http.LanDeviceScanner
@@ -48,6 +49,20 @@ class TransferViewModel @Inject constructor(
     val activeTasks: StateFlow<List<TransferTask>> = transferManager.activeTasks
     val history: StateFlow<List<TransferTask>> = transferManager.history
     val lastEvent: StateFlow<String?> = transferManager.lastEvent
+
+    // ===== 配對碼 =====
+    val pinRequest: StateFlow<PinRequest?> = transferManager.pinRequest
+    val receivePin: StateFlow<String?> = transferManager.receivePin
+
+    fun submitPin(pin: String) = transferManager.submitPin(pin)
+
+    fun cancelPinRequest() = transferManager.cancelPinRequest()
+
+    fun regenerateReceivePin() {
+        viewModelScope.launch {
+            transferManager.updateReceivePin(settings.regenerateReceivePin())
+        }
+    }
 
     // ===== 掃描結果 (畫面層狀態) =====
     private val _devices = MutableStateFlow<List<OpenFxDevice>>(emptyList())
@@ -162,6 +177,12 @@ class TransferViewModel @Inject constructor(
 
     fun cancelAppPreparation() {
         appExportJob?.cancel()
+    }
+
+    fun sendFiles(paths: List<String>, device: OpenFxDevice) {
+        viewModelScope.launch {
+            transferManager.sendFiles(paths, device, settings.deviceName.first())
+        }
     }
 
     fun sendUris(uris: List<Uri>, device: OpenFxDevice) {

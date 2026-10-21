@@ -74,6 +74,7 @@ fun DeviceScreen(
     val isReceiving by viewModel.isReceiving.collectAsState()
     val receivedCount by viewModel.receivedCount.collectAsState()
     val receiveDir by viewModel.receiveDir.collectAsState()
+    val receivePin by viewModel.receivePin.collectAsState()
     val lastEvent by viewModel.lastEvent.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -157,6 +158,19 @@ fun DeviceScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text("接收模式已啟動", fontWeight = FontWeight.Medium)
+                    receivePin?.let { pin ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.pairing_pin_display, pin),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            androidx.compose.material3.TextButton(onClick = viewModel::regenerateReceivePin) {
+                                Text(stringResource(R.string.pairing_pin_regenerate))
+                            }
+                        }
+                    }
                     Text("儲存位置：${receiveDir ?: "Download/OpenFX"}", fontSize = 12.sp)
                     Text("本次已接收：$receivedCount 個檔案", fontSize = 12.sp)
                     Text(

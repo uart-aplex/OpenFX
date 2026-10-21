@@ -1,15 +1,29 @@
 package com.openfx.core.sync.http
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.InputStream
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Semaphore
 
+/**
+ * OpenFX HTTP 接收端
+ *
+ * 安全性：/upload 與 /auth 都必須帶 X-OpenFX-Pin header，值等於接收端畫面上的 6 位數配對碼。
+ * 同一個 IP 連續輸錯 [MAX_PIN_FAILURES] 次會被鎖 [LOCKOUT_MS] 毫秒 (回 429)，避免區網內暴力猜碼。
+ * /ping 不需驗證，只回傳公開資訊 (名稱、deviceId、port)。
+ */
 class OpenFxHttpReceiver(
     private val deviceName: String,
     private val saveDir: File,
+    pin: String,
+    private val deviceId: String = "",
     private val port: Int = 8989,
     private val onFileReceived: (File, senderDeviceName: String) -> Unit = { _, _ -> },
     private val onError: (String) -> Unit = {},
@@ -21,8 +35,24 @@ class OpenFxHttpReceiver(
     ) -> Unit = { _, _, _, _ -> },
     private val onFailed: (fileName: String, reason: String) -> Unit = { _, _ -> }
 ) {
+    companion object {
+        const val PIN_HEADER = "X-OpenFX-Pin"
+        private const val MAX_PIN_FAILURES = 5
+        private const val LOCKOUT_MS = 60_000L
+        private const val MAX_CONNECTIONS = 8
+    }
+
+    /** 配對碼 — 接收中也可更換，下一個請求立即生效 */
+    @Volatile
+    var pin: String = pin
+
     private var serverSocket: ServerSocket? = null
     private var serverThread: Thread? = null
+
+    private class PinAttempts(var failures: Int = 0, var lockedUntil: Long = 0L)
+
+    private val pinAttempts = ConcurrentHashMap<String, PinAttempts>()
+    private val connectionSlots = Semaphore(MAX_CONNECTIONS)
 
     @Volatile
     var isRunning: Boolean = false
@@ -40,8 +70,17 @@ class OpenFxHttpReceiver(
 
                 while (isRunning) {
                     val socket = serverSocket?.accept() ?: break
+                    // 同時連線數上限 — 避免惡意或異常的大量連線耗盡執行緒
+                    if (!connectionSlots.tryAcquire()) {
+                        runCatching { socket.close() }
+                        continue
+                    }
                     Thread {
-                        handleClient(socket)
+                        try {
+                            handleClient(socket)
+                        } finally {
+                            connectionSlots.release()
+                        }
                     }.start()
                 }
             } catch (e: Exception) {
@@ -94,7 +133,8 @@ class OpenFxHttpReceiver(
                     }
                 }
 
-                handleRequest(requestLine, headers, input, output)
+                val remoteIp = client.inetAddress?.hostAddress ?: "unknown"
+                handleRequest(requestLine, headers, remoteIp, input, output)
             } catch (_: Exception) {
                 // 對方中途斷線或協議錯誤 — 直接結束這條連線
             }
@@ -104,19 +144,20 @@ class OpenFxHttpReceiver(
     private fun handleRequest(
         requestLine: String,
         headers: Map<String, String>,
+        remoteIp: String,
         input: InputStream,
         output: java.io.OutputStream
     ) {
         when {
                 requestLine.startsWith("GET /ping") -> {
-                    val body = """
-                        {
-                          "app": "OpenFX",
-                          "deviceName": "$deviceName",
-                          "port": $port,
-                          "version": 1
-                        }
-                    """.trimIndent()
+                    val body = buildJsonObject {
+                        put("app", "OpenFX")
+                        put("deviceName", deviceName)
+                        put("deviceId", deviceId)
+                        put("port", port)
+                        put("version", 2)
+                        put("auth", "pin")
+                    }.toString()
 
                     writeResponse(
                         output = output,
@@ -126,7 +167,18 @@ class OpenFxHttpReceiver(
                     )
                 }
 
+                requestLine.startsWith("GET /auth") -> {
+                    if (!authorize(headers, remoteIp, output)) return
+                    writeResponse(
+                        output = output,
+                        status = "200 OK",
+                        contentType = "application/json; charset=utf-8",
+                        body = buildJsonObject { put("ok", true) }.toString()
+                    )
+                }
+
                 requestLine.startsWith("POST /upload") -> {
+                    if (!authorize(headers, remoteIp, output)) return
                     val filename = extractFilename(requestLine)
                     val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
                     val senderDeviceName = decodeDeviceName(headers["x-openfx-device"])
@@ -138,6 +190,19 @@ class OpenFxHttpReceiver(
                             contentType = "text/plain; charset=utf-8",
                             body = "Missing Content-Length"
                         )
+                        return
+                    }
+
+                    // usableSpace 取不到時回傳 0 — 只有確定空間不足才拒收
+                    val freeSpace = saveDir.usableSpace
+                    if (freeSpace in 1 until contentLength) {
+                        writeResponse(
+                            output = output,
+                            status = "507 Insufficient Storage",
+                            contentType = "text/plain; charset=utf-8",
+                            body = "Not enough free space"
+                        )
+                        onError("儲存空間不足，無法接收 $filename")
                         return
                     }
 
@@ -175,7 +240,10 @@ class OpenFxHttpReceiver(
 
                         onFileReceived(target, senderDeviceName)
 
-                        val body = """{"ok":true,"path":"${target.absolutePath}"}"""
+                        val body = buildJsonObject {
+                            put("ok", true)
+                            put("name", target.name)
+                        }.toString()
 
                         writeResponse(
                             output = output,
@@ -206,6 +274,67 @@ class OpenFxHttpReceiver(
                     )
                 }
         }
+    }
+
+    /**
+     * 驗證 X-OpenFX-Pin。失敗時已寫出 401/429 回應，呼叫端直接 return。
+     */
+    private fun authorize(
+        headers: Map<String, String>,
+        remoteIp: String,
+        output: java.io.OutputStream
+    ): Boolean {
+        val now = System.currentTimeMillis()
+        val attempts = pinAttempts.getOrPut(remoteIp) { PinAttempts() }
+        val candidate = headers[PIN_HEADER.lowercase()]
+
+        val result = synchronized(attempts) {
+            when {
+                attempts.lockedUntil > now -> AuthResult.LOCKED
+                pinMatches(candidate) -> {
+                    attempts.failures = 0
+                    AuthResult.OK
+                }
+                // 沒帶配對碼 (傳送端首次預檢) 不算猜錯
+                candidate.isNullOrEmpty() -> AuthResult.WRONG
+                else -> {
+                    attempts.failures++
+                    if (attempts.failures >= MAX_PIN_FAILURES) {
+                        attempts.failures = 0
+                        attempts.lockedUntil = now + LOCKOUT_MS
+                    }
+                    AuthResult.WRONG
+                }
+            }
+        }
+
+        when (result) {
+            AuthResult.OK -> return true
+            AuthResult.LOCKED -> writeResponse(
+                output = output,
+                status = "429 Too Many Requests",
+                contentType = "text/plain; charset=utf-8",
+                body = "Too many wrong pairing codes"
+            )
+            AuthResult.WRONG -> writeResponse(
+                output = output,
+                status = "401 Unauthorized",
+                contentType = "text/plain; charset=utf-8",
+                body = "Pairing code required"
+            )
+        }
+        return false
+    }
+
+    private enum class AuthResult { OK, WRONG, LOCKED }
+
+    /** 固定時間比較，避免從回應時間推測配對碼 */
+    private fun pinMatches(candidate: String?): Boolean {
+        if (candidate.isNullOrEmpty()) return false
+        return MessageDigest.isEqual(
+            candidate.toByteArray(Charsets.UTF_8),
+            pin.toByteArray(Charsets.UTF_8)
+        )
     }
 
     private fun writeResponse(
@@ -254,7 +383,8 @@ class OpenFxHttpReceiver(
         val safeName = filename
             .replace("/", "_")
             .replace("\\", "_")
-            .ifBlank { "received_file" }
+            .takeUnless { it.isBlank() || it == "." || it == ".." }
+            ?: "received_file"
 
         var target = File(dir, safeName)
 

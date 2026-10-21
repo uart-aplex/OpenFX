@@ -1,5 +1,9 @@
 package com.openfx.core.sync.http
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.NetworkInterface
@@ -10,8 +14,14 @@ import kotlin.concurrent.thread
 data class OpenFxDevice(
     val ip: String,
     val deviceName: String,
-    val port: Int = 8989
-)
+    val port: Int = 8989,
+    /** 接收端的固定識別碼；舊版 (0.2.x) 接收端沒有 */
+    val deviceId: String? = null
+) {
+    /** 儲存配對碼用的 key — 優先用 deviceId，IP 變動後仍有效 */
+    val peerKey: String
+        get() = deviceId?.takeIf { it.isNotBlank() } ?: "$ip:$port"
+}
 
 object LanDeviceScanner {
 
@@ -91,10 +101,13 @@ object LanDeviceScanner {
 
             if (responseCode == 200) {
                 val body = conn.inputStream.bufferedReader().readText()
+                val json = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
 
-                if (body.contains("OpenFX", ignoreCase = true)) {
-                    val name = extractJsonString(body, "deviceName") ?: "OpenFX Device"
-                    OpenFxDevice(ip = ip, deviceName = name, port = port)
+                if (json?.get("app")?.jsonPrimitive?.contentOrNull == "OpenFX") {
+                    val name = json["deviceName"]?.jsonPrimitive?.contentOrNull
+                        ?.takeIf { it.isNotBlank() } ?: "OpenFX Device"
+                    val deviceId = json["deviceId"]?.jsonPrimitive?.contentOrNull
+                    OpenFxDevice(ip = ip, deviceName = name, port = port, deviceId = deviceId)
                 } else {
                     null
                 }
@@ -104,11 +117,6 @@ object LanDeviceScanner {
         } catch (_: Exception) {
             null
         }
-    }
-
-    private fun extractJsonString(json: String, key: String): String? {
-        val regex = Regex(""""$key"\s*:\s*"([^"]*)"""")
-        return regex.find(json)?.groupValues?.getOrNull(1)
     }
 
     private fun String.isPrivateLanAddress(): Boolean {

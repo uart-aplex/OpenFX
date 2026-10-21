@@ -118,7 +118,12 @@ class TransferService : Service() {
         // 用設定頁的裝置名稱啟動接收端 (其他裝置掃描時看到的名字)
         serviceScope.launch {
             val deviceName = settings.deviceName.first()
-            transferManager.startReceiver(deviceName, saveDir).onFailure {
+            transferManager.startReceiver(
+                deviceName = deviceName,
+                saveDir = saveDir,
+                pin = settings.receivePinOrCreate(),
+                deviceId = settings.deviceId()
+            ).onFailure {
                 stopSelf()
                 return@launch
             }
@@ -131,8 +136,9 @@ class TransferService : Service() {
                 transferManager.activeTasks,
                 transferManager.receivedCount,
                 transferManager.lastEvent,
-                settings.transferCompleteNotify
-            ) { tasks, count, event, notifyEnabled ->
+                settings.transferCompleteNotify,
+                transferManager.receivePin
+            ) { tasks, count, event, notifyEnabled, pin ->
                 val receiving = tasks.firstOrNull {
                     it.direction == TransferDirection.RECEIVE &&
                         it.status == TransferStatus.ACTIVE
@@ -156,7 +162,7 @@ class TransferService : Service() {
                     }
                     NotificationUi(
                         isTransferring = false,
-                        title = "OpenFX 接收待命中",
+                        title = pin?.let { "OpenFX 接收待命中 · 配對碼 $it" } ?: "OpenFX 接收待命中",
                         text = text,
                         progressPercent = null
                     )

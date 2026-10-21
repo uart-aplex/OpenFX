@@ -15,15 +15,21 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 //import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import android.graphics.Color
+import com.openfx.mobile.R
 import androidx.activity.SystemBarStyle
 import com.openfx.app.platform.Platform
 import com.openfx.app.platform.PlatformDetector
@@ -56,6 +62,9 @@ class MainActivity : ComponentActivity() {
     private val legacyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* 結果處理 */ }
+
+    /** 系統沒有可用的權限設定頁時顯示 adb 授權說明 */
+    private var showStorageAccessHelp by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,6 +123,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             com.openfx.mobile.ui.browser.ReceivedApkInstallPrompt(pendingAppInstalls, transferViewModel::consumeReceivedApp)
+                            com.openfx.mobile.ui.transfer.PairingPinPrompt(transferViewModel)
+                            StorageAccessHelp()
                         }
                     }
                 }
@@ -128,11 +139,42 @@ class MainActivity : ComponentActivity() {
                             color = MaterialTheme.colorScheme.background
                         ) {
                             OpenFXNavHost()
+                            com.openfx.mobile.ui.transfer.PairingPinPrompt(
+                                androidx.hilt.navigation.compose.hiltViewModel()
+                            )
+                            StorageAccessHelp()
                         }
                     }
                 }
             }
         }
+    }
+
+    @Composable
+    private fun StorageAccessHelp() {
+        if (!showStorageAccessHelp) return
+        val command = "adb shell appops set --uid $packageName MANAGE_EXTERNAL_STORAGE allow"
+        AlertDialog(
+            onDismissRequest = { showStorageAccessHelp = false },
+            title = { Text(stringResource(R.string.storage_access_title)) },
+            text = { Text(stringResource(R.string.storage_access_message, command)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showStorageAccessHelp = false
+                    runCatching {
+                        startActivity(
+                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                .setData(Uri.parse("package:$packageName"))
+                        )
+                    }
+                }) { Text(stringResource(R.string.storage_access_open_settings)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStorageAccessHelp = false }) {
+                    Text(stringResource(R.string.storage_access_later))
+                }
+            }
+        )
     }
 
     private fun requestNotificationPermission() {
@@ -149,15 +191,17 @@ class MainActivity : ComponentActivity() {
     private fun requestStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                try {
-                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                        data = Uri.parse("package:$packageName")
-                    }
-                    storagePermissionLauncher.launch(intent)
-                } catch (_: Exception) {
-                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                    storagePermissionLauncher.launch(intent)
+                // 許多 Android TV / Google TV 沒有「所有檔案存取權」設定頁，
+                // 兩個 intent 都可能丟 ActivityNotFoundException — 都失敗就改顯示 adb 說明
+                val intents = listOf(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                        .setData(Uri.parse("package:$packageName")),
+                    Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                )
+                val launched = intents.any { intent ->
+                    runCatching { storagePermissionLauncher.launch(intent) }.isSuccess
                 }
+                showStorageAccessHelp = !launched
             }
         } else {
             legacyPermissionLauncher.launch(

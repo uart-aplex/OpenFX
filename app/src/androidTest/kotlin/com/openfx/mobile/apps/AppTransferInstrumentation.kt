@@ -28,11 +28,14 @@ import kotlin.concurrent.thread
 class AppTransferInstrumentation : Instrumentation() {
     private var mode: String? = null
     private var targetIp: String? = null
+    /** 對方接收畫面上的配對碼 (sendToPeer 模式用) */
+    private var targetPin: String? = null
 
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
         mode = arguments?.getString("mode")
         targetIp = arguments?.getString("targetIp")
+        targetPin = arguments?.getString("targetPin")
         start()
     }
 
@@ -108,16 +111,21 @@ class AppTransferInstrumentation : Instrumentation() {
         val exports = mutableListOf<File>()
         val receiveDir = File(targetContext.cacheDir, "app_transfer_test").apply { mkdirs() }
         val received = AtomicReference<File?>()
+        val testPin = "246810"
         val receiver = OpenFxHttpReceiver(
             deviceName = "App transfer test",
             saveDir = receiveDir,
+            pin = testPin,
             port = 18989,
             onFileReceived = { file, _ -> received.set(file) }
         )
         try {
             receiver.start()
             delay(300)
-            val manager = TransferManager()
+            val settings = SettingsRepository(targetContext)
+            val testDevice = OpenFxDevice(ip = "127.0.0.1", deviceName = "App transfer test", port = 18989)
+            settings.setPeerPin(testDevice.peerKey, testPin)
+            val manager = TransferManager(settings)
             listOf(targetContext.packageName, split.packageName).forEach { packageName ->
                 val file = repository.export(packageName)
                 exports += file
@@ -137,7 +145,7 @@ class AppTransferInstrumentation : Instrumentation() {
                     }
                 }
                 received.set(null)
-                val id = manager.sendStream(file.name, file.length(), OpenFxDevice(ip = "127.0.0.1", deviceName = "App transfer test", port = 18989), "Sender") { file.inputStream() }
+                val id = manager.sendStream(file.name, file.length(), testDevice, "Sender") { file.inputStream() }
                 withTimeout(60000) {
                     while (manager.history.value.none { it.id == id }) delay(50)
                     check(manager.history.value.first { it.id == id }.status == TransferStatus.COMPLETED)
@@ -168,12 +176,15 @@ class AppTransferInstrumentation : Instrumentation() {
         val split = repository.listApps().filter { it.isSplit && !it.isSystem }
             .sortedBy { it.size }.firstOrNull { !hasNativeLibraries(it.packageName) }
         check(split != null)
-        val manager = TransferManager()
-        val viewModel = TransferViewModel(manager, SettingsRepository(targetContext), repository, targetContext)
+        val settings = SettingsRepository(targetContext)
+        val peer = OpenFxDevice(ip = requireNotNull(targetIp), deviceName = "Peer")
+        targetPin?.let { settings.setPeerPin(peer.peerKey, it) }
+        val manager = TransferManager(settings)
+        val viewModel = TransferViewModel(manager, settings, repository, targetContext)
         val queued = AtomicBoolean(false)
         viewModel.sendInstalledApps(
             listOf(targetContext.packageName, split.packageName),
-            OpenFxDevice(ip = requireNotNull(targetIp), deviceName = "Peer"),
+            peer,
             onQueued = { queued.set(true) }
         )
         withTimeout(90000) {

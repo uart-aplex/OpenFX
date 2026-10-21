@@ -1,9 +1,11 @@
 package com.openfx.core.sync
 
+import com.openfx.core.settings.SettingsRepository
 import com.openfx.core.sync.http.OpenFxDevice
 import com.openfx.core.sync.http.OpenFxHttpReceiver
 import com.openfx.core.sync.http.OpenFxHttpSender
 import com.openfx.core.sync.http.UdpDiscovery
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,9 +14,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.Closeable
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -27,19 +33,44 @@ import javax.inject.Singleton
  * 發送：HTTP POST (port 8989)，支援進度回報與取消
  * 接收：OpenFxHttpReceiver，由 TransferService (前景服務) 持有，背景持續接收
  * 發現：UdpDiscovery (UDP broadcast)，2 秒內找到同網段的接收端
+ * 配對：接收端有 6 位數配對碼；傳送前先用 /auth 確認已存的配對碼，
+ *       無效時透過 [pinRequest] 請 UI 跳出輸入框，驗證成功後依對方 deviceId 記住
  *
  * UI (DeviceScreen / TransferScreen / FileBrowser) 透過 StateFlow 觀察任務狀態。
  * 任務列表的更新會從多個執行緒進來 (傳送 coroutine / 接收 socket thread)，
  * 一律用 StateFlow.update { } (CAS) 做原子更新，避免進度互相覆蓋遺失。
  */
+/** 等待使用者輸入配對碼的請求 — UI 觀察 [TransferManager.pinRequest] 顯示對話框 */
+data class PinRequest(
+    val device: OpenFxDevice,
+    /** 上一次輸入的結果 (WRONG / LOCKED / UNREACHABLE)，第一次顯示時為 null */
+    val error: OpenFxHttpSender.PinCheck? = null,
+    val verifying: Boolean = false
+)
+
 @Singleton
-class TransferManager @Inject constructor() {
+class TransferManager @Inject constructor(
+    private val settings: SettingsRepository
+) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var receiver: OpenFxHttpReceiver? = null
     private var advertiser: Closeable? = null
     private val uploads = ConcurrentHashMap<String, OpenFxHttpSender.UploadHandle>()
+
+    /** 傳送端：同一時間只處理一個配對流程 (多個檔案同時送往同一台時只問一次) */
+    private val pairingLock = Mutex()
+    private var pendingPin: CompletableDeferred<String?>? = null
+
+    private val _pinRequest = MutableStateFlow<PinRequest?>(null)
+    val pinRequest: StateFlow<PinRequest?> = _pinRequest.asStateFlow()
+
+    /** 接收中使用的配對碼 (未接收時為 null)，給接收畫面與通知顯示 */
+    private val _receivePin = MutableStateFlow<String?>(null)
+    val receivePin: StateFlow<String?> = _receivePin.asStateFlow()
+
+    private class PairingCancelledException : IOException("未輸入配對碼")
 
     private val _isReceiving = MutableStateFlow(false)
     val isReceiving: StateFlow<Boolean> = _isReceiving.asStateFlow()
@@ -77,6 +108,8 @@ class TransferManager @Inject constructor() {
     fun startReceiver(
         deviceName: String,
         saveDir: File,
+        pin: String,
+        deviceId: String,
         port: Int = OpenFxHttpSender.DEFAULT_PORT
     ): Result<Unit> {
         if (receiver?.isRunning == true) return Result.success(Unit)
@@ -86,6 +119,8 @@ class TransferManager @Inject constructor() {
             val instance = OpenFxHttpReceiver(
                 deviceName = deviceName,
                 saveDir = saveDir,
+                pin = pin,
+                deviceId = deviceId,
                 port = port,
                 onFileReceived = { file, senderDeviceName ->
                     _receivedCount.update { it + 1 }
@@ -108,8 +143,9 @@ class TransferManager @Inject constructor() {
             instance.start()
             check(instance.isRunning) { "接收端啟動失敗 (port $port 被佔用?)" }
 
-            advertiser = UdpDiscovery.startAdvertiser(deviceName, port)
+            advertiser = UdpDiscovery.startAdvertiser(deviceName, port, deviceId)
             receiver = instance
+            _receivePin.value = pin
             _isReceiving.value = true
             _receiveDir.value = saveDir.absolutePath
             _receivedCount.value = 0
@@ -122,7 +158,16 @@ class TransferManager @Inject constructor() {
         advertiser = null
         receiver?.stop()
         receiver = null
+        _receivePin.value = null
         _isReceiving.value = false
+    }
+
+    /** 接收中更換配對碼 — 已記住舊碼的傳送端下次會被要求重新輸入 */
+    @Synchronized
+    fun updateReceivePin(pin: String) {
+        val active = receiver ?: return
+        active.pin = pin
+        _receivePin.value = pin
     }
 
     /**
@@ -210,12 +255,13 @@ class TransferManager @Inject constructor() {
         return paths.map(::File)
             .filter { it.isFile }
             .map { file ->
-                startUpload(file.name, file.length(), device) { handle, taskId ->
+                startUpload(file.name, file.length(), device) { handle, taskId, pin ->
                     OpenFxHttpSender.uploadFile(
                         targetIp = device.ip,
                         port = device.port,
                         file = file,
                         senderDeviceName = senderDeviceName,
+                        pin = pin,
                         handle = handle,
                         onProgress = { sent -> updateSendProgress(taskId, sent, file.length()) }
                     )
@@ -232,7 +278,7 @@ class TransferManager @Inject constructor() {
         onFinished: () -> Unit = {},
         openStream: () -> InputStream
     ): String {
-        return startUpload(fileName, contentLength, device, onFinished) { handle, taskId ->
+        return startUpload(fileName, contentLength, device, onFinished) { handle, taskId, pin ->
             openStream().use { input ->
                 OpenFxHttpSender.uploadStream(
                     targetIp = device.ip,
@@ -241,6 +287,7 @@ class TransferManager @Inject constructor() {
                     contentLength = contentLength,
                     input = input,
                     senderDeviceName = senderDeviceName,
+                    pin = pin,
                     handle = handle,
                     onProgress = { sent -> updateSendProgress(taskId, sent, contentLength) }
                 )
@@ -253,7 +300,7 @@ class TransferManager @Inject constructor() {
         size: Long,
         device: OpenFxDevice,
         onFinished: () -> Unit = {},
-        upload: (OpenFxHttpSender.UploadHandle, String) -> Boolean
+        upload: (OpenFxHttpSender.UploadHandle, String, String?) -> Boolean
     ): String {
         val taskId = UUID.randomUUID().toString().take(8)
         val task = TransferTask(
@@ -272,11 +319,29 @@ class TransferManager @Inject constructor() {
 
         scope.launch {
             try {
-                val ok = upload(handle, taskId)
+                val pin = resolvePin(device)
+                if (handle.isCancelled) return@launch
+                val ok = upload(handle, taskId, pin)
                 finishSend(taskId, ok, size)
                 if (!ok) _lastEvent.value = "傳送失敗：$fileName"
             } catch (_: OpenFxHttpSender.UploadCancelledException) {
                 // cancelTask 已標記 CANCELLED 並移入歷史
+            } catch (_: PairingCancelledException) {
+                if (!handle.isCancelled) {
+                    updateTask(taskId) {
+                        it.copy(status = TransferStatus.CANCELLED, endTime = System.currentTimeMillis())
+                    }
+                    moveToHistory(taskId)
+                    _lastEvent.value = "已取消傳送：$fileName (未輸入配對碼)"
+                }
+            } catch (_: OpenFxHttpSender.PinRejectedException) {
+                // 預檢通過後對方才更換配對碼 — 清掉記住的碼，下次重新詢問
+                settings.setPeerPin(device.peerKey, null)
+                updateTask(taskId) {
+                    it.copy(status = TransferStatus.FAILED, endTime = System.currentTimeMillis())
+                }
+                moveToHistory(taskId)
+                _lastEvent.value = "傳送失敗：$fileName (配對碼已失效，請重新傳送)"
             } catch (e: Exception) {
                 if (!handle.isCancelled) {
                     updateTask(taskId) {
@@ -327,6 +392,58 @@ class TransferManager @Inject constructor() {
         _history.value = emptyList()
     }
 
+    // ===== 配對 =====
+
+    /**
+     * 取得送往 [device] 要用的配對碼。
+     * 已記住且有效 → 直接使用；舊版接收端 → null (不需配對碼)；
+     * 否則透過 [pinRequest] 請使用者輸入，取消或逾時丟 [PairingCancelledException]。
+     */
+    private suspend fun resolvePin(device: OpenFxDevice): String? = pairingLock.withLock {
+        val saved = settings.peerPin(device.peerKey)
+        when (OpenFxHttpSender.checkPin(device.ip, device.port, saved)) {
+            OpenFxHttpSender.PinCheck.OK -> return@withLock saved
+            OpenFxHttpSender.PinCheck.LEGACY -> return@withLock null
+            OpenFxHttpSender.PinCheck.UNREACHABLE -> throw IOException("無法連線到 ${device.deviceName}")
+            OpenFxHttpSender.PinCheck.WRONG,
+            OpenFxHttpSender.PinCheck.LOCKED -> {
+                if (saved != null) settings.setPeerPin(device.peerKey, null)
+            }
+        }
+
+        val deferred = CompletableDeferred<String?>()
+        pendingPin = deferred
+        _pinRequest.value = PinRequest(device)
+        try {
+            withTimeoutOrNull(PIN_PROMPT_TIMEOUT_MS) { deferred.await() }
+                ?: throw PairingCancelledException()
+        } finally {
+            pendingPin = null
+            _pinRequest.value = null
+        }
+    }
+
+    /** UI 送出配對碼 — 驗證成功才記住並繼續傳送，失敗則更新 [pinRequest] 的錯誤狀態 */
+    fun submitPin(pin: String) {
+        val request = _pinRequest.value ?: return
+        if (request.verifying) return
+        _pinRequest.value = request.copy(verifying = true, error = null)
+        scope.launch {
+            val device = request.device
+            when (val result = OpenFxHttpSender.checkPin(device.ip, device.port, pin)) {
+                OpenFxHttpSender.PinCheck.OK, OpenFxHttpSender.PinCheck.LEGACY -> {
+                    settings.setPeerPin(device.peerKey, pin)
+                    pendingPin?.complete(pin)
+                }
+                else -> _pinRequest.update { it?.copy(verifying = false, error = result) }
+            }
+        }
+    }
+
+    fun cancelPinRequest() {
+        pendingPin?.complete(null)
+    }
+
     // ===== 裝置發現 =====
 
     /** UDP 廣播掃描，最多等 timeoutMs；阻塞時間內在 IO dispatcher 執行 */
@@ -336,6 +453,10 @@ class TransferManager @Inject constructor() {
         }
 
     // ===== Private =====
+
+    private companion object {
+        const val PIN_PROMPT_TIMEOUT_MS = 5 * 60_000L
+    }
 
     private fun updateTask(taskId: String, update: (TransferTask) -> TransferTask) {
         _activeTasks.update { list ->
