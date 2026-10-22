@@ -74,6 +74,8 @@ dependencies {
     implementation(Deps.coreKtx)
     implementation(Deps.activityCompose)
     implementation(Deps.biometric)
+    implementation(Deps.zxingCore)
+    implementation(Deps.zxingEmbedded)
     implementation(Deps.lifecycleRuntime)
     implementation(Deps.lifecycleViewModel)
     implementation(Deps.navigationCompose)

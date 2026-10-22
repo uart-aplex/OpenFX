@@ -461,4 +461,15 @@ Run this adb command from a computer, then reopen OpenFX:
     <string name="settings_language">Language</string>
     <string name="settings_language_system">System default</string>
     <string name="settings_language_desc">Change the app display language</string>
+    <string name="qr_scan">Scan QR code</string>
+    <string name="qr_scan_prompt">Point the camera at the QR code on the receiver</string>
+    <string name="qr_pair_hint">Scan with OpenFX on your phone to pair</string>
+    <string name="qr_show">Show pairing QR code</string>
+    <string name="qr_hide">Hide QR code</string>
+    <string name="qr_invalid">This is not an OpenFX pairing QR code</string>
+    <string name="pair_in_progress">Pairing…</string>
+    <string name="pair_ok">Paired with “%1$s”</string>
+    <string name="pair_not_found">Receiver not found. Make sure receive mode is on and both devices are on the same network.</string>
+    <string name="pair_wrong_pin">This QR code has expired (the PIN was changed). Scan it again.</string>
+    <string name="pair_other_device">That address now belongs to another device. Scan the receiver screen again.</string>
 </resources>

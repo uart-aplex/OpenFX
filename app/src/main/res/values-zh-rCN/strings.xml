@@ -439,4 +439,15 @@
     <string name="settings_language">语言</string>
     <string name="settings_language_system">跟随系统</string>
     <string name="settings_language_desc">切换 App 显示语言</string>
+    <string name="qr_scan">扫描二维码</string>
+    <string name="qr_scan_prompt">对准接收端画面上的二维码</string>
+    <string name="qr_pair_hint">用手机 OpenFX 扫描即可配对</string>
+    <string name="qr_show">显示配对二维码</string>
+    <string name="qr_hide">隐藏二维码</string>
+    <string name="qr_invalid">这不是 OpenFX 的配对二维码</string>
+    <string name="pair_in_progress">配对中…</string>
+    <string name="pair_ok">已与“%1$s”配对</string>
+    <string name="pair_not_found">找不到接收端，请确认对方已开启接收模式且在同一个网络</string>
+    <string name="pair_wrong_pin">二维码已失效（配对码已更换），请重新扫描</string>
+    <string name="pair_other_device">该地址已经是另一台设备，请重新扫描接收端画面</string>
 </resources>

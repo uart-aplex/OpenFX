@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.openfx.mobile.ui.transfer.message
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -59,6 +62,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var platformDetector: PlatformDetector
 
+    @Inject
+    lateinit var transferManager: com.openfx.core.sync.TransferManager
+
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { /* 使用者從設定頁返回 */ }
@@ -66,6 +72,26 @@ class MainActivity : ComponentActivity() {
     private val legacyPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* 結果處理 */ }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handlePairingLink(intent)
+    }
+
+    /** 系統相機掃到接收端 QR Code (openfx://pair?...) 時直接配對 */
+    private fun handlePairingLink(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val code = intent.dataString?.let(com.openfx.core.sync.PairingCode::parse)
+        if (code == null) {
+            android.widget.Toast.makeText(this, R.string.qr_invalid, android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        android.widget.Toast.makeText(this, R.string.pair_in_progress, android.widget.Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch {
+            val result = transferManager.pairWithCode(code)
+            android.widget.Toast.makeText(this@MainActivity, result.message(resources), android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
 
     /** 系統沒有可用的權限設定頁時顯示 adb 授權說明 */
     private var showStorageAccessHelp by mutableStateOf(false)
@@ -81,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
         requestStoragePermission()
         requestNotificationPermission()
+        if (savedInstanceState == null) handlePairingLink(intent)
 //        window.statusBarColor = android.graphics.Color.TRANSPARENT
         setContent {
             when (platformDetector.platform) {

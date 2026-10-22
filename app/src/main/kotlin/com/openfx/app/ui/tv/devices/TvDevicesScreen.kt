@@ -75,6 +75,7 @@ fun TvDevicesScreen(
     val receivedCount by viewModel.receivedCount.collectAsState()
     val receiveDir by viewModel.receiveDir.collectAsState()
     val receivePin by viewModel.receivePin.collectAsState()
+    val pairingCode by viewModel.pairingCode.collectAsState()
     val lastEvent by viewModel.lastEvent.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -196,6 +197,17 @@ fun TvDevicesScreen(
                         color = stateColor,
                         style = MaterialTheme.typography.displaySmall
                     )
+                }
+            }
+            pairingCode?.let { code ->
+                // 手機用 OpenFX「掃描 QR Code」即可配對，不用輸入 IP 與配對碼
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    com.openfx.common.ui.QrCodeImage(
+                        content = code.toUri(),
+                        contentDescription = stringResource(R.string.qr_pair_hint),
+                        modifier = Modifier.size(160.dp)
+                    )
+                    Text(stringResource(R.string.qr_pair_hint), style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (isReceiving) {

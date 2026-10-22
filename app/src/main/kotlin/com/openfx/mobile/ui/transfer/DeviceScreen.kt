@@ -77,6 +77,7 @@ fun DeviceScreen(
     val receivedCount by viewModel.receivedCount.collectAsState()
     val receiveDir by viewModel.receiveDir.collectAsState()
     val receivePin by viewModel.receivePin.collectAsState()
+    val pairingCode by viewModel.pairingCode.collectAsState()
     val lastEvent by viewModel.lastEvent.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
@@ -88,7 +89,19 @@ fun DeviceScreen(
     var pendingSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
     var appSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
     var showManual by remember { mutableStateOf(false) }
+    var showQr by remember { mutableStateOf(false) }
     val resources = LocalResources.current
+    val scanQr = rememberPairingScanner { code ->
+        if (code == null) {
+            viewModel.reportStatus(resources.getString(R.string.qr_invalid))
+        } else {
+            viewModel.reportStatus(resources.getString(R.string.pair_in_progress))
+            viewModel.pairWithCode(code) { result ->
+                viewModel.reportStatus(result.message(resources))
+                if (result is com.openfx.core.sync.TransferManager.PairResult.Paired) selectedDevice = result.device
+            }
+        }
+    }
 
     val sendPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -155,10 +168,14 @@ fun DeviceScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp)
         )
-        androidx.compose.material3.TextButton(
-            onClick = { showManual = true },
-            modifier = Modifier.padding(horizontal = 4.dp)
-        ) { Text(stringResource(R.string.manual_device_add)) }
+        Row(modifier = Modifier.padding(horizontal = 4.dp)) {
+            androidx.compose.material3.TextButton(onClick = scanQr) {
+                Text(stringResource(R.string.qr_scan))
+            }
+            androidx.compose.material3.TextButton(onClick = { showManual = true }) {
+                Text(stringResource(R.string.manual_device_add))
+            }
+        }
 
         // ===== 接收狀態卡片 =====
         if (isReceiving) {
@@ -183,6 +200,19 @@ fun DeviceScreen(
                             androidx.compose.material3.TextButton(onClick = viewModel::regenerateReceivePin) {
                                 Text(stringResource(R.string.pairing_pin_regenerate))
                             }
+                        }
+                    }
+                    // 手機當接收端時，另一支手機可掃這個 QR Code 配對
+                    pairingCode?.let { code ->
+                        androidx.compose.material3.TextButton(onClick = { showQr = !showQr }) {
+                            Text(stringResource(if (showQr) R.string.qr_hide else R.string.qr_show))
+                        }
+                        if (showQr) {
+                            com.openfx.common.ui.QrCodeImage(
+                                content = code.toUri(),
+                                contentDescription = stringResource(R.string.qr_pair_hint),
+                                modifier = Modifier.size(200.dp)
+                            )
                         }
                     }
                     Text(

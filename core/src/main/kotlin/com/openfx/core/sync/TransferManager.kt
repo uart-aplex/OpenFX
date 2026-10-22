@@ -74,6 +74,10 @@ class TransferManager @Inject constructor(
     private val _receivePin = MutableStateFlow<String?>(null)
     val receivePin: StateFlow<String?> = _receivePin.asStateFlow()
 
+    /** 接收中時給畫面產生 QR Code 用；沒在接收或抓不到 IP 時為 null */
+    private val _pairingCode = MutableStateFlow<PairingCode?>(null)
+    val pairingCode: StateFlow<PairingCode?> = _pairingCode.asStateFlow()
+
     private class PairingCancelledException : IOException("Pairing code not entered")
 
     private class PeerUnreachableException(val deviceName: String) :
@@ -153,6 +157,9 @@ class TransferManager @Inject constructor(
             advertiser = UdpDiscovery.startAdvertiser(deviceName, port, deviceId)
             receiver = instance
             _receivePin.value = pin
+            _pairingCode.value = LanDeviceScanner.getLocalIpAddress()?.let { ip ->
+                PairingCode(ip, port, pin, deviceId, deviceName)
+            }
             _isReceiving.value = true
             _receiveDir.value = saveDir.absolutePath
             _receivedCount.value = 0
@@ -166,6 +173,7 @@ class TransferManager @Inject constructor(
         receiver?.stop()
         receiver = null
         _receivePin.value = null
+        _pairingCode.value = null
         _isReceiving.value = false
     }
 
@@ -175,6 +183,7 @@ class TransferManager @Inject constructor(
         val active = receiver ?: return
         active.pin = pin
         _receivePin.value = pin
+        _pairingCode.update { it?.copy(pin = pin) }
     }
 
     /**
@@ -457,6 +466,35 @@ class TransferManager @Inject constructor(
 
     fun cancelPinRequest() {
         pendingPin?.complete(null)
+    }
+
+    sealed interface PairResult {
+        data class Paired(val device: OpenFxDevice) : PairResult
+        /** 該 IP 上沒有 OpenFX 接收端 (未開接收模式、不同網段) */
+        data object NotFound : PairResult
+        /** QR Code 裡的配對碼已失效 (接收端換過碼) */
+        data object WrongPin : PairResult
+        data object Locked : PairResult
+        /** IP 上是另一台裝置 (DHCP 換過位址) */
+        data object OtherDevice : PairResult
+    }
+
+    /** 掃描 QR Code 後：確認接收端、驗證配對碼，成功就記住裝置與配對碼 */
+    suspend fun pairWithCode(code: PairingCode): PairResult = withContext(Dispatchers.IO) {
+        val device = LanDeviceScanner.probe(code.host, code.port) ?: return@withContext PairResult.NotFound
+        if (code.deviceId != null && device.deviceId != null && code.deviceId != device.deviceId) {
+            return@withContext PairResult.OtherDevice
+        }
+        when (OpenFxHttpSender.checkPin(device.ip, device.port, code.pin)) {
+            OpenFxHttpSender.PinCheck.OK, OpenFxHttpSender.PinCheck.LEGACY -> {
+                settings.setPeerPin(device.peerKey, code.pin)
+                settings.addManualDevice("${device.ip}:${device.port}")
+                PairResult.Paired(device)
+            }
+            OpenFxHttpSender.PinCheck.WRONG -> PairResult.WrongPin
+            OpenFxHttpSender.PinCheck.LOCKED -> PairResult.Locked
+            OpenFxHttpSender.PinCheck.UNREACHABLE -> PairResult.NotFound
+        }
     }
 
     // ===== 裝置發現 =====

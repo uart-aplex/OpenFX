@@ -465,4 +465,15 @@
     <string name="settings_language">語言</string>
     <string name="settings_language_system">跟隨系統</string>
     <string name="settings_language_desc">切換 App 顯示語言</string>
+    <string name="qr_scan">掃描 QR Code</string>
+    <string name="qr_scan_prompt">對準接收端畫面上的 QR Code</string>
+    <string name="qr_pair_hint">手機 OpenFX 掃描即可配對</string>
+    <string name="qr_show">顯示配對 QR Code</string>
+    <string name="qr_hide">隱藏 QR Code</string>
+    <string name="qr_invalid">這不是 OpenFX 的配對 QR Code</string>
+    <string name="pair_in_progress">配對中…</string>
+    <string name="pair_ok">已與「%1$s」配對</string>
+    <string name="pair_not_found">找不到接收端，請確認對方已開啟接收模式且在同一個網路</string>
+    <string name="pair_wrong_pin">QR Code 已失效 (配對碼已更換)，請重新掃描</string>
+    <string name="pair_other_device">該位址已經是另一台裝置，請重新掃描接收端畫面</string>
 </resources>

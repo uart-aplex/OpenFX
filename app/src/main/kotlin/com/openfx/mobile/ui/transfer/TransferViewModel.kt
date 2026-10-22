@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.transfer
 
+import com.openfx.core.sync.PairingCode
 import com.openfx.core.sync.TransferEvent
 import android.content.Context
 import android.content.Intent
@@ -54,6 +55,18 @@ class TransferViewModel @Inject constructor(
     // ===== 配對碼 =====
     val pinRequest: StateFlow<PinRequest?> = transferManager.pinRequest
     val receivePin: StateFlow<String?> = transferManager.receivePin
+    val pairingCode: StateFlow<PairingCode?> = transferManager.pairingCode
+
+    /** 掃描 QR Code 配對；成功時同時放進目前的裝置清單 */
+    fun pairWithCode(code: PairingCode, onResult: (TransferManager.PairResult) -> Unit) {
+        viewModelScope.launch {
+            val result = transferManager.pairWithCode(code)
+            if (result is TransferManager.PairResult.Paired) {
+                _devices.value = listOf(result.device) + _devices.value.filterNot { it.ip == result.device.ip }
+            }
+            onResult(result)
+        }
+    }
 
     fun submitPin(pin: String) = transferManager.submitPin(pin)
 
