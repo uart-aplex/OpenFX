@@ -4,6 +4,10 @@
 > **單一 APK** 同時支援手機 📱 平板 📲 和 Android TV 📺  
 > 內建 P2P 跨裝置傳檔
 
+[![CI](https://github.com/uart-aplex/OpenFX/actions/workflows/ci.yml/badge.svg)](https://github.com/uart-aplex/OpenFX/actions/workflows/ci.yml)
+
+**下載**：到 [Releases](https://github.com/uart-aplex/OpenFX/releases) 下載 `OpenFX-x.y.z.apk`，手機與 TV 裝同一個檔案。
+
 ---
 
 ## 🧰 主要功能
@@ -11,7 +15,7 @@
 | 功能 | 說明 |
 |------|------|
 | 檔案管理 | 瀏覽、複製/移動/刪除/重新命名、搜尋、書籤、壓縮檔瀏覽與解壓、APK / 分割 APK 安裝 |
-| 手機 ↔ TV 傳檔 | 區網自動發現 (UDP)，路由器擋廣播時可手動輸入 IP；接收端以 6 位數配對碼驗證，連錯 5 次鎖 60 秒 |
+| 手機 ↔ TV 傳檔 | 區網自動發現 (UDP)；手機掃 TV 上的 QR Code 一步配對，路由器擋廣播時也可手動輸入 IP；接收端以 6 位數配對碼驗證，連錯 5 次鎖 60 秒 |
 | 網路芳鄰 (SMB/NAS) | 儲存伺服器 (密碼以 Android Keystore 加密)、自動列出共享、本機 ↔ NAS 複製搬移、影片/音樂直接串流可拖曳 |
 | 加密保險箱 | AES-256-GCM 加密檔案、檔名與資料夾；指紋解鎖、自動上鎖、禁止截圖、加密備份還原 — 見 [docs/VAULT.md](docs/VAULT.md) |
 | USB / SD 卡 | 顯示系統磁區名稱，插拔即時更新；TV 首頁「USB 裝置」直接開啟隨身碟 |
@@ -42,32 +46,37 @@
 
 ### 環境需求
 
-| 項目 | 最低版本 |
-|------|---------|
-| Android Studio | Ladybug (2024.2) 或更新 |
-| JDK | 17 |
-| Android SDK | API 35 (Android 15) |
-| Gradle | 8.9 (自動下載) |
+| 項目 | 版本 |
+|------|------|
+| Android Studio | 支援 AGP 8.13 的版本 (Narwhal 3 Feature Drop 2025.1.3 或更新) |
+| JDK | 17 (Android Studio 內建的 JBR 即可) |
+| Android SDK | API 35 |
+| Gradle | 8.13 (wrapper 自動下載) |
 
-### 快速上手 (3 步)
+所有函式庫版本集中在 [`buildSrc/src/main/kotlin/Dependencies.kt`](buildSrc/src/main/kotlin/Dependencies.kt)，專案沒有使用 version catalog。
 
-1. **解壓縮** ZIP 到你要的位置
-2. Android Studio → **File → Open** → 選 `OpenFX` 資料夾
-3. 等 Gradle sync 完成 (第一次約 5-10 分鐘)
+### 快速上手
 
-### ⚠️ 第一次可能遇到的事
+```bash
+git clone https://github.com/uart-aplex/OpenFX.git
+```
 
-**gradle-wrapper.jar 找不到？**  
-Android Studio 通常會自動提示 Generate → 按就好。
-或在專案根目錄 terminal 跑：`gradle wrapper --gradle-version 8.9`
+1. Android Studio → **File → Open** → 選 `OpenFX` 資料夾
+2. 等 Gradle sync 完成 (第一次約 5-10 分鐘)
+3. 選 `app` 模組 → 接上手機或 TV → ▶️ Run
 
-**SDK 路徑錯誤？**  
-File → Project Structure → SDK Location → 選你的 Android SDK
+不開 Android Studio 也能建置：
+
+```bash
+./gradlew :app:assembleDebug :app:testDebugUnitTest
+```
+
+APK 在 `app/build/outputs/apk/debug/`。SDK 路徑錯誤時，在 `local.properties` 加 `sdk.dir=<你的 Android SDK 路徑>`。
 
 ### 執行方式
 
-- **手機測試**: 選 `app` 模組 → 插手機 (或開手機模擬器) → ▶️ Run
-- **TV 測試**: 選 `app` 模組 → 開 TV 模擬器 → ▶️ Run (同一個 APK!)
+- **手機**: 插手機 (或開手機模擬器) → ▶️ Run
+- **TV**: 開 TV 模擬器，或用無線偵錯連實機 (`adb pair` / `adb connect`) → ▶️ Run (同一個 APK!)
 
 TV 模擬器開法：Tools → Device Manager → Create → TV → Android TV → API 35
 
@@ -83,8 +92,11 @@ OpenFX/
 │
 ├── core/                        ← 共用核心 (手機和 TV 共用)
 │   ├── file/                    ← 檔案操作 (列舉/複製/搜尋)
-│   ├── sync/                    ← P2P 發現、配對、TCP 傳輸
-│   ├── network/                 ← SMB 客戶端 (NAS 連線)
+│   ├── sync/                    ← UDP 發現、配對碼 / QR Code、HTTP 傳輸
+│   ├── network/smb/             ← SMB 客戶端 (NAS 瀏覽、串流)
+│   ├── vault/                   ← 加密保險箱 (AES-256-GCM)
+│   ├── media/                   ← 影音串流 DataSource
+│   ├── security/                ← Android Keystore 加密
 │   └── common/                  ← Hilt DI 模組
 │
 └── app/                         ← 統一 APK (手機 + TV UI 都在這)
@@ -93,13 +105,17 @@ OpenFX/
     │   ├── MainActivity.kt      ← 統一入口 (根據平台選 UI tree)
     │   ├── NavHost.kt           ← 手機底部導航
     │   ├── browser/             ← 手機檔案瀏覽器 (網格/列表)
-    │   ├── transfer/            ← 手機裝置配對 + 傳輸進度
+    │   ├── transfer/            ← 手機裝置配對 (PIN / QR Code) + 傳輸進度
+    │   ├── network/             ← 網路芳鄰伺服器設定
+    │   ├── vault/               ← 保險箱畫面
     │   ├── settings/            ← 設定頁面
     │   ├── media/               ← 媒體播放 Service
     │   ├── theme/               ← Material3 主題
     │   └── tv/                  ← ⭐ TV 專用 UI (同一個 APK 內)
     │       ├── TvTheme.kt       ← TV 暗色主題
     │       ├── home/            ← TV 首頁 (Leanback 大卡片)
+    │       ├── browser/         ← TV 檔案瀏覽 (D-pad)
+    │       ├── devices/         ← TV 接收畫面 (配對碼 + QR Code)
     │       └── remote/          ← TV 遠端控制 TCP 服務
     └── res/
         └── drawable/tv_banner.xml ← TV Launcher 的 320x180 橫幅
@@ -135,6 +151,12 @@ OpenFX/
 **Q: APK 大小會不會因為包含兩套 UI 而變大很多？**  
 不會。TV UI 的程式碼量很小 (幾個 Composable)。Compose for TV 和 Leanback 函式庫約多加 2-3MB，
 但省去維護兩個 APK 的麻煩。SmartTube 也是這樣做的。
+
+---
+
+## 🤝 參與開發
+
+歡迎 issue 與 PR！流程、程式風格與翻譯方式請看 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ---
 
