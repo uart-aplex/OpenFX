@@ -10,7 +10,6 @@ object Versions {
 
     // Compose
     const val composeBom = "2024.12.01"
-    const val composeCompiler = "1.5.15"
     const val composeTv = "1.0.0"
 
     // AndroidX
@@ -39,12 +38,16 @@ object Versions {
     const val commonsCompress = "1.27.1"
     const val junrar = "7.5.5"
 
+    // QR Code
+    const val zxingCore = "3.5.3"
+    const val zxingEmbedded = "4.3.0"
+
     // Serialization
     const val serialization = "1.7.3"
 
     // Coroutines
     const val coroutines = "1.9.0"
-    const val junit = "4.12"
+    const val junit = "4.13.2"
 }
 
 object Deps {
@@ -111,4 +114,8 @@ object Deps {
     // Archive
     const val commonsCompress = "org.apache.commons:commons-compress:${Versions.commonsCompress}"
     const val junrar = "com.github.junrar:junrar:${Versions.junrar}"
+
+    // QR Code：產生 (core) 與手機掃描 (embedded, Apache-2.0，不依賴 Google Play 服務)
+    const val zxingCore = "com.google.zxing:core:${Versions.zxingCore}"
+    const val zxingEmbedded = "com.journeyapps:zxing-android-embedded:${Versions.zxingEmbedded}"
 }

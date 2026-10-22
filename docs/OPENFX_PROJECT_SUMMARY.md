@@ -86,13 +86,13 @@ OpenFX/
 | Kotlin | 2.2.0 |
 | KSP | 2.2.0-2.0.2 |
 | Gradle | 8.13 |
-| Compose BOM | 2025.05.00 |
-| Hilt | upgraded by Android Studio AI (was 2.52, check current) |
+| Compose BOM | 2024.12.01 |
+| Hilt | 2.57 |
 | Target SDK | 35 |
 | Min SDK | 24 |
 | JDK | 17 (Embedded JBR) |
 
-**Note**: Hilt version was auto-upgraded by Android Studio's "Fix with AI" feature. Charlie should check `Dependencies.kt` for the current value.
+**Note**: `buildSrc/src/main/kotlin/Dependencies.kt` is the single source of versions (there is no version catalog).
 
 ---
 
