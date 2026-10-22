@@ -1,0 +1,5 @@
+• QR code pairing: scan the TV screen with your phone
+• Network shares (SMB/NAS) browsing and streaming
+• Encrypted vault
+• Manual IP entry, USB drives, in-app language switch
+• PIN verification on receivers

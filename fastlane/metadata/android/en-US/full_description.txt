@@ -1,0 +1,25 @@
+OpenFX is an open-source Android file manager. A single APK runs on phones, tablets and Android TV.
+
+<b>File management</b>
+• Browse, copy, move, delete, rename, search and bookmark
+• Browse and extract archives; install APK and split APK bundles
+• USB drives and SD cards, updated as they are plugged in or removed
+
+<b>Phone ↔ TV transfer</b>
+• Automatic discovery on the local network; pair by scanning the QR code on the TV
+• Receivers require a 6-digit PIN and lock out for 60 seconds after 5 wrong tries
+• Add a device by IP when the router blocks broadcasts
+
+<b>Network shares (SMB / NAS)</b>
+• Saved servers with passwords encrypted by Android Keystore
+• Copy and move between the device and the NAS; stream video and music with seeking
+
+<b>Encrypted vault</b>
+• AES-256-GCM encryption of files, names and folders
+• Fingerprint unlock, auto-lock, screenshot blocking, encrypted backup and restore
+
+<b>Also</b>
+• Every screen works with a TV remote
+• Traditional Chinese, English and Simplified Chinese, switchable inside the app
+
+Permissions: "All files access" is used to manage files; "Query all packages" is used to send installed apps to another device.
