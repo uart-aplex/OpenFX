@@ -23,14 +23,36 @@ private val TvDarkColorScheme = darkColorScheme(
     border = Color(0xFF667378)
 )
 
+/** TV 上共用的手機版對話框 (Material3) 也要跟著暗色，否則會是預設的淺色 */
+private val TvDialogColorScheme = androidx.compose.material3.darkColorScheme(
+    primary = Color(0xFF57E3A1),
+    onPrimary = Color(0xFF062B1C),
+    secondary = Color(0xFFFFC857),
+    onSecondary = Color(0xFF332100),
+    background = Color(0xFF101416),
+    onBackground = Color(0xFFF4F7F5),
+    surface = Color(0xFF171D20),
+    onSurface = Color(0xFFF4F7F5),
+    surfaceVariant = Color(0xFF252D31),
+    onSurfaceVariant = Color(0xFFD5DEE0),
+    surfaceContainerHigh = Color(0xFF20272A),
+    secondaryContainer = Color(0xFF2C4A3D),
+    onSecondaryContainer = Color(0xFFD7F5E6),
+    error = Color(0xFFFF6B6B),
+    onError = Color(0xFF3A0505),
+    outline = Color(0xFF667378)
+)
+
 /**
  * TV 端主題 — 暗色背景，大字體，適合遙控器操作
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun OpenFXTvTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = TvDarkColorScheme,
-        content = content
-    )
+    androidx.compose.material3.MaterialTheme(colorScheme = TvDialogColorScheme) {
+        MaterialTheme(
+            colorScheme = TvDarkColorScheme,
+            content = content
+        )
+    }
 }
