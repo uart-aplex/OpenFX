@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.transfer
 
+import com.openfx.common.ui.dpadFieldNavigation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -75,6 +76,7 @@ fun PairingPinPrompt(viewModel: TransferViewModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
+                        .dpadFieldNavigation()
                 )
                 if (current.verifying) {
                     CircularProgressIndicator()

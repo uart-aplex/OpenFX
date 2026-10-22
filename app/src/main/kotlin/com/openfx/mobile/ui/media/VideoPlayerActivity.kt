@@ -1,8 +1,12 @@
 package com.openfx.mobile.ui.media
 
+import com.openfx.core.media.MediaUris
+import com.openfx.core.media.OpenFxDataSourceFactory
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import androidx.compose.ui.res.stringResource
 import com.openfx.mobile.R
-import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -38,7 +42,12 @@ import java.io.File
  * manifest 宣告 configChanges，旋轉不會重建播放器。
  */
 @OptIn(UnstableApi::class)
+@AndroidEntryPoint
 class VideoPlayerActivity : ComponentActivity() {
+
+    /** 本機檔案與 smb:// 串流共用的資料來源 */
+    @Inject
+    lateinit var dataSourceFactory: OpenFxDataSourceFactory
 
     companion object {
         const val EXTRA_PATH = "extra_path"
@@ -59,12 +68,13 @@ class VideoPlayerActivity : ComponentActivity() {
         val title = intent.getStringExtra(EXTRA_TITLE) ?: File(path).name
 
         val exoPlayer = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
             .setAudioAttributes(AudioAttributes.DEFAULT, /* handleAudioFocus= */ true)
             .setHandleAudioBecomingNoisy(true)
             .build()
         exoPlayer.setMediaItem(
             MediaItem.Builder()
-                .setUri(Uri.fromFile(File(path)))
+                .setUri(MediaUris.forPath(path))
                 .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
                 .build()
         )

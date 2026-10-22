@@ -1,9 +1,9 @@
 package com.openfx.mobile.ui.media
 
+import com.openfx.core.media.MediaUris
 import com.openfx.mobile.R
 import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -240,7 +240,7 @@ class MusicPlayerManager @Inject constructor(
     private fun MusicTrack.toMediaItem(): MediaItem {
         return MediaItem.Builder()
             .setMediaId(path)
-            .setUri(Uri.fromFile(File(path)))
+            .setUri(MediaUris.forPath(path))
             .setMediaMetadata(MediaMetadata.Builder().setTitle(title).build())
             .build()
     }

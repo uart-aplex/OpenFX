@@ -16,8 +16,9 @@ data class FileItem(
     val extension: String = name.substringAfterLast('.', ""),
     val isHidden: Boolean = name.startsWith(".")
 ) {
+    // 資料夾名稱也可能有點 (例如 com.example.app)，不能只看副檔名
     val fileType: FileType
-        get() = FileType.fromExtension(extension)
+        get() = if (isDirectory) FileType.FOLDER else FileType.fromExtension(extension)
 
     val formattedSize: String
         get() = when {
@@ -42,7 +43,6 @@ enum class FileType {
         fun fromExtension(ext: String): FileType {
             val lower = ext.lowercase()
             return when {
-                lower == "" -> FOLDER
                 lower in imageExts -> IMAGE
                 lower in videoExts -> VIDEO
                 lower in audioExts -> AUDIO

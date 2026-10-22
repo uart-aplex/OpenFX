@@ -32,6 +32,7 @@ object Versions {
 
     // Network / Files
     const val smbj = "0.13.0"
+    const val dcerpc = "0.12.13"
     const val commonsNet = "3.11.1"
     const val jsch = "0.2.21"
     const val commonsCompress = "1.27.1"
@@ -100,6 +101,8 @@ object Deps {
 
     // Network File Systems
     const val smbj = "com.hierynomus:smbj:${Versions.smbj}"
+    // SMB 共享清單列舉 (SRVSVC NetShareEnum)
+    const val dcerpc = "com.rapid7.client:dcerpc:${Versions.dcerpc}"
     const val commonsNet = "commons-net:commons-net:${Versions.commonsNet}"
     const val jsch = "com.github.mwiede:jsch:${Versions.jsch}"
 

@@ -26,3 +26,12 @@
 -keepclasseswithmembers class com.openfx.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# SMB 共享清單 (dcerpc) 與 NTLM 用的 BouncyCastle — 都靠反射載入
+-keep class com.rapid7.client.dcerpc.** { *; }
+-dontwarn com.rapid7.client.dcerpc.**
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+-dontwarn org.slf4j.**
+-dontwarn javax.el.**
+-dontwarn org.ietf.jgss.**

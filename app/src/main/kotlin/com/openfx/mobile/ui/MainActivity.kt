@@ -89,22 +89,30 @@ class MainActivity : ComponentActivity() {
                             val pendingAppInstalls by transferViewModel.pendingAppInstalls.collectAsState()
                             var tvRoute by remember { mutableStateOf(TvRoute.HOME) }
                             var tvInitialPath by remember { mutableStateOf<String?>(null) }
+                            var tvOpenNetwork by remember { mutableStateOf(false) }
 
                             when (tvRoute) {
                                 TvRoute.HOME -> {
                                     TvHomeScreen(
                                         onNavigateToFiles = {
                                             tvInitialPath = null
+                                            tvOpenNetwork = false
                                             tvRoute = TvRoute.FILES
                                         },
                                         onNavigateToDevices = { tvRoute = TvRoute.DEVICES },
+                                        onNavigateToNetwork = {
+                                            tvInitialPath = null
+                                            tvOpenNetwork = true
+                                            tvRoute = TvRoute.FILES
+                                        },
                                     )
                                 }
 
                                 TvRoute.FILES -> {
                                     TvFileBrowserScreen(
                                         onBackToHome = { tvRoute = TvRoute.HOME },
-                                        initialPath = tvInitialPath
+                                        initialPath = tvInitialPath,
+                                        openNetworkOnStart = tvOpenNetwork
                                     )
                                 }
 

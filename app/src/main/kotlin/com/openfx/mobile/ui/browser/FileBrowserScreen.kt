@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui.browser
 
+import com.openfx.mobile.ui.network.NetworkServersDialog
+import androidx.compose.material.icons.filled.Lan
+import com.openfx.core.network.smb.SmbPath
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import com.openfx.mobile.R
@@ -59,6 +62,7 @@ fun FileBrowserScreen(
     val isScanningSendDevices by viewModel.isScanningSendDevices.collectAsState()
     val bookmarks by viewModel.bookmarks.collectAsState()
     var showBookmarks by remember { mutableStateOf(false) }
+    var showNetwork by remember { mutableStateOf(false) }
 
     // 返回鍵處理：多選模式 → 取消選擇，否則 → 回上一層
     // 到頂 (canNavigateUp=false) 時不攔截，讓系統正常處理返回 (不會卡死)
@@ -136,7 +140,8 @@ fun FileBrowserScreen(
             CategoryChipRow(
                 volumes = uiState.storageVolumes,
                 currentPath = uiState.currentPath,
-                onNavigate = { viewModel.navigateTo(it) }
+                onNavigate = { viewModel.navigateTo(it) },
+                onNetwork = { showNetwork = true }
             )
         }
 
@@ -209,6 +214,7 @@ fun FileBrowserScreen(
                     currentPath = uiState.currentPath,
                     bookmarks = bookmarks,
                     onNavigate = { viewModel.navigateTo(it) },
+                    onNetwork = { showNetwork = true },
                     modifier = Modifier.width(layoutInfo.sidebarWidth.dp)
                 )
 
@@ -277,6 +283,7 @@ fun FileBrowserScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        RemoteFetchBar(uiState.remoteFetch)
 
         // ===== 底部操作列 =====
         AnimatedVisibility(
@@ -405,6 +412,17 @@ fun FileBrowserScreen(
         )
     }
 
+    // 網路位置 (SMB) 對話框
+    if (showNetwork) {
+        NetworkServersDialog(
+            onOpen = { path ->
+                showNetwork = false
+                viewModel.navigateTo(path)
+            },
+            onDismiss = { showNetwork = false }
+        )
+    }
+
     // 書籤列表對話框
     if (showBookmarks) {
         BookmarksDialog(
@@ -439,6 +457,16 @@ private fun buildCrumbs(
     volumes: List<StorageVolume>,
     internalStorageName: String
 ): List<Crumb> {
+    if (SmbPath.isSmb(path)) {
+        val smb = runCatching { SmbPath.parse(path) }.getOrNull() ?: return listOf(Crumb(path, path))
+        val crumbs = mutableListOf<Crumb>()
+        var current: SmbPath? = smb
+        while (current != null) {
+            crumbs += Crumb(current.name, current.toString())
+            current = current.parent()
+        }
+        return crumbs.reversed()
+    }
     val allVolumes = volumes.ifEmpty {
         listOf(
             StorageVolume(
@@ -519,7 +547,8 @@ fun BreadcrumbBar(
 fun CategoryChipRow(
     volumes: List<StorageVolume>,
     currentPath: String,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    onNetwork: () -> Unit = {}
 ) {
     val selectedShortcut = locationShortcuts.firstOrNull { (_, _, path) ->
         currentPath == path || currentPath.startsWith("$path/")
@@ -558,6 +587,18 @@ fun CategoryChipRow(
                 label = { Text(stringResource(label), fontSize = 12.sp) },
                 leadingIcon = {
                     Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            )
+        }
+
+        // 網路位置 (NAS / 電腦共享)
+        item {
+            FilterChip(
+                selected = SmbPath.isSmb(currentPath),
+                onClick = onNetwork,
+                label = { Text(stringResource(R.string.network_chip), fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Lan, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
             )
         }
@@ -707,7 +748,7 @@ fun FileGrid(
                     }
 
                     // 檔案圖示 / 圖片縮圖
-                    if (file.fileType == FileType.IMAGE || file.fileType == FileType.VIDEO) {
+                    if ((file.fileType == FileType.IMAGE || file.fileType == FileType.VIDEO) && !SmbPath.isSmb(file.path)) {
                         AsyncImage(
                             model = File(file.path),
                             contentDescription = file.name,
@@ -718,7 +759,7 @@ fun FileGrid(
                         )
                     } else {
                         FileIcon(
-                            file = File(file.path),
+                            file = file,
                             modifier = Modifier.size(44.dp)
                         )
                     }
@@ -767,7 +808,7 @@ fun FileList(
                     onLongClick = { onFileLongClick(file) }
                 ),
                 leadingContent = {
-                    if (file.fileType == FileType.IMAGE || file.fileType == FileType.VIDEO) {
+                    if ((file.fileType == FileType.IMAGE || file.fileType == FileType.VIDEO) && !SmbPath.isSmb(file.path)) {
                         AsyncImage(
                             model = File(file.path),
                             contentDescription = file.name,
@@ -778,7 +819,7 @@ fun FileList(
                         )
                     } else {
                         FileIcon(
-                            file = File(file.path),
+                            file = file,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -934,6 +975,26 @@ fun FileContentArea(
     var apkInstallTarget by remember { mutableStateOf<FileItem?>(null) }
     var archiveTarget by remember { mutableStateOf<FileItem?>(null) }
 
+    val onFileClick: (FileItem) -> Unit = { file ->
+        when {
+            viewModel.isMultiSelectMode -> viewModel.toggleSelection(file.path)
+            file.isDirectory -> viewModel.navigateTo(file.path)
+            // 音樂可直接串流 (smb:// 也行)
+            file.fileType == FileType.AUDIO -> {
+                audioPlaylist = uiState.files.filter { !it.isDirectory && it.fileType == FileType.AUDIO }
+                audioIndex = audioPlaylist.indexOfFirst { it.path == file.path }.takeIf { it >= 0 }
+            }
+            // 以下需要本機檔案：網路檔案會先下載到快取
+            file.fileType == FileType.IMAGE ->
+                viewModel.withLocalCopy(file) { previewImagePath = it.path }
+            file.fileType == FileType.APK ->
+                viewModel.withLocalCopy(file) { apkInstallTarget = it }
+            file.fileType == FileType.ARCHIVE && ArchiveOperations.isSupported(file.path) ->
+                viewModel.withLocalCopy(file) { archiveTarget = it }
+            else -> viewModel.openFile(file)
+        }
+    }
+
     Box(modifier = modifier) {
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -948,47 +1009,13 @@ fun FileContentArea(
                 ViewMode.GRID -> FileGrid(
                     files = uiState.files,
                     selectedFiles = uiState.selectedFiles,
-                    onFileClick = { file ->
-                        if (viewModel.isMultiSelectMode) {
-                            viewModel.toggleSelection(file.path)
-                        } else if (file.isDirectory) {
-                            viewModel.navigateTo(file.path)
-                        } else if (file.fileType == FileType.IMAGE) {
-                            previewImagePath = file.path
-                        } else if (file.fileType == FileType.AUDIO) {
-                            audioPlaylist = uiState.files.filter { !it.isDirectory && it.fileType == FileType.AUDIO }
-                            audioIndex = audioPlaylist.indexOfFirst { it.path == file.path }.takeIf { it >= 0 }
-                        } else if (file.fileType == FileType.APK) {
-                            apkInstallTarget = file
-                        } else if (file.fileType == FileType.ARCHIVE && ArchiveOperations.isSupported(file.path)) {
-                            archiveTarget = file
-                        } else {
-                            viewModel.openFile(file)
-                        }
-                    },
+                    onFileClick = onFileClick,
                     onFileLongClick = { viewModel.toggleSelection(it.path) }
                 )
                 ViewMode.LIST -> FileList(
                     files = uiState.files,
                     selectedFiles = uiState.selectedFiles,
-                    onFileClick = { file ->
-                        if (viewModel.isMultiSelectMode) {
-                            viewModel.toggleSelection(file.path)
-                        } else if (file.isDirectory) {
-                            viewModel.navigateTo(file.path)
-                        } else if (file.fileType == FileType.IMAGE) {
-                            previewImagePath = file.path
-                        } else if (file.fileType == FileType.AUDIO) {
-                            audioPlaylist = uiState.files.filter { !it.isDirectory && it.fileType == FileType.AUDIO }
-                            audioIndex = audioPlaylist.indexOfFirst { it.path == file.path }.takeIf { it >= 0 }
-                        } else if (file.fileType == FileType.APK) {
-                            apkInstallTarget = file
-                        } else if (file.fileType == FileType.ARCHIVE && ArchiveOperations.isSupported(file.path)) {
-                            archiveTarget = file
-                        } else {
-                            viewModel.openFile(file)
-                        }
-                    },
+                    onFileClick = onFileClick,
                     onFileLongClick = { viewModel.toggleSelection(it.path) }
                 )
             }
@@ -1042,6 +1069,7 @@ fun FileSidebar(
     currentPath: String,
     bookmarks: Set<String>,
     onNavigate: (String) -> Unit,
+    onNetwork: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // LazyColumn 的 builder 不是 composable，預設磁區名稱先在外面取好
@@ -1097,6 +1125,16 @@ fun FileSidebar(
                 label = stringResource(label),
                 isSelected = currentPath == path,
                 onClick = { onNavigate(path) }
+            )
+        }
+
+        // 網路位置
+        item {
+            SidebarNavItem(
+                icon = Icons.Default.Lan,
+                label = stringResource(R.string.network_title),
+                isSelected = SmbPath.isSmb(currentPath),
+                onClick = onNetwork
             )
         }
 
@@ -1290,3 +1328,22 @@ private fun sortLabel(sortBy: com.openfx.core.file.SortBy): String = stringResou
         com.openfx.core.file.SortBy.TYPE -> R.string.sort_type
     }
 )
+
+/** 開啟網路檔案前下載到快取的進度條 */
+@Composable
+fun RemoteFetchBar(fetch: RemoteFetch?) {
+    fetch ?: return
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Text(
+            stringResource(R.string.smb_downloading, fetch.name),
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (fetch.total > 0) {
+            LinearProgressIndicator(progress = { fetch.percent }, modifier = Modifier.fillMaxWidth())
+        } else {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+    }
+}

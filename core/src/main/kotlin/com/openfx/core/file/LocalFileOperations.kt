@@ -39,15 +39,7 @@ class LocalFileOperations @Inject constructor(
 
             files.filter { showHidden || !it.isHidden }
                 .map { it.toFileItem() }
-                .let { list ->
-                    // 資料夾優先排在前面
-                    val dirs = list.filter { it.isDirectory }
-                    val regular = list.filter { !it.isDirectory }
-
-                    val sortedDirs = sortList(dirs, sortBy, ascending)
-                    val sortedFiles = sortList(regular, sortBy, ascending)
-                    sortedDirs + sortedFiles
-                }
+                .sortedForBrowser(sortBy, ascending)
         }
     }
 
@@ -252,20 +244,6 @@ class LocalFileOperations @Inject constructor(
             extension = ext,
             isHidden = isHidden
         )
-    }
-
-    private fun sortList(
-        list: List<FileItem>,
-        sortBy: SortBy,
-        ascending: Boolean
-    ): List<FileItem> {
-        val sorted = when (sortBy) {
-            SortBy.NAME -> list.sortedBy { it.name.lowercase() }
-            SortBy.SIZE -> list.sortedBy { it.size }
-            SortBy.DATE -> list.sortedBy { it.lastModified }
-            SortBy.TYPE -> list.sortedBy { it.extension }
-        }
-        return if (ascending) sorted else sorted.reversed()
     }
 
     private fun calculateSize(file: File): Long {

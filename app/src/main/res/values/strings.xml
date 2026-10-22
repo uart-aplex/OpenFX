@@ -331,6 +331,8 @@
     <string name="settings_sort_summary">%1$s (%2$s)</string>
     <string name="settings_device_name_placeholder">例如：客廳電視</string>
     <string name="save">儲存</string>
+    <string name="network_test_ok_no_list">連線成功；這台伺服器不提供共享清單，請手動填入共享資料夾名稱</string>
+    <string name="smb_error_share_list">這台伺服器不提供共享清單，請在伺服器設定中填入共享資料夾名稱</string>
     <string name="transfer_history">歷史記錄</string>
     <string name="transfer_failed">傳輸失敗</string>
     <string name="transfer_cancelled">已取消</string>
@@ -415,6 +417,11 @@
     <string name="tv_pick_audio">選擇音訊檔案</string>
     <string name="tv_install_apk">安裝 APK</string>
     <string name="tv_install_apk_desc">從 Download/OpenFX 開啟</string>
+    <string name="smb_error_not_configured">找不到這台伺服器的設定，請重新加入</string>
+    <string name="smb_error_auth">登入失敗：帳號或密碼錯誤</string>
+    <string name="smb_error_access">沒有權限或共享不存在：%1$s</string>
+    <string name="smb_error_unreachable">無法連線到伺服器 (%1$s)</string>
+    <string name="smb_downloading">正在從網路下載 %1$s…</string>
     <string name="event_received">已從 %1$s 接收 %2$s</string>
     <string name="event_receive_error">接收錯誤：%1$s</string>
     <string name="event_receive_failed">接收失敗：%1$s (%2$s)</string>
@@ -424,5 +431,26 @@
     <string name="event_send_unreachable">傳送失敗：%1$s (無法連線到 %2$s)</string>
     <string name="event_send_cancelled_no_pin">已取消傳送：%1$s (未輸入配對碼)</string>
     <string name="event_send_pin_expired">傳送失敗：%1$s (配對碼已失效，請重新傳送)</string>
+    <string name="network_title">網路位置</string>
+    <string name="network_empty_hint">尚未加入任何 NAS 或電腦共享。\n按「新增伺服器」輸入 IP 或主機名稱。</string>
+    <string name="network_add">新增伺服器</string>
+    <string name="network_edit">編輯伺服器</string>
+    <string name="network_open">開啟 %1$s</string>
+    <string name="network_host">IP 或主機名稱</string>
+    <string name="network_username">帳號</string>
+    <string name="network_username_hint">留白 = 訪客</string>
+    <string name="network_password">密碼</string>
+    <string name="network_password_keep">留白 = 不變更</string>
+    <string name="network_share">共享資料夾</string>
+    <string name="network_share_hint">留白 = 列出全部</string>
+    <string name="network_share_all">(列出全部共享)</string>
+    <string name="network_display_name">顯示名稱 (選填)</string>
+    <string name="network_port">連接埠</string>
+    <string name="network_domain">網域 (選填)</string>
+    <string name="network_test">測試連線</string>
+    <plurals name="network_test_ok">
+        <item quantity="other">連線成功，找到 %1$d 個共享</item>
+    </plurals>
+    <string name="network_chip">網路</string>
     <!-- /i18n:auto -->
 </resources>

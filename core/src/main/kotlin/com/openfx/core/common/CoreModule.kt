@@ -1,14 +1,10 @@
 package com.openfx.core.common
 
-import android.content.Context
 import com.openfx.core.file.FileOperations
-import com.openfx.core.file.LocalFileOperations
-import com.openfx.core.network.Smb2Client
+import com.openfx.core.file.RoutingFileOperations
 import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -16,16 +12,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class CoreModule {
 
+    /** 依路徑分派到本機或 SMB (smb://) 的實作 */
     @Binds
     @Singleton
-    abstract fun bindFileOperations(impl: LocalFileOperations): FileOperations
-}
-
-@Module
-@InstallIn(SingletonComponent::class)
-object CoreProviderModule {
-
-    @Provides
-    @Singleton
-    fun provideSmb2Client(): Smb2Client = Smb2Client()
+    abstract fun bindFileOperations(impl: RoutingFileOperations): FileOperations
 }

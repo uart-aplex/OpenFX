@@ -48,6 +48,7 @@ dependencies {
 
     // Network File Systems
     implementation(Deps.smbj)
+    implementation(Deps.dcerpc)
     implementation(Deps.commonsNet)
     implementation(Deps.jsch)
 

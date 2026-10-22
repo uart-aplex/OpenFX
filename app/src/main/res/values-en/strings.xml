@@ -316,6 +316,8 @@ Run this adb command from a computer, then reopen OpenFX:
     <string name="settings_sort_summary">%1$s (%2$s)</string>
     <string name="settings_device_name_placeholder">e.g. Living room TV</string>
     <string name="save">Save</string>
+    <string name="network_test_ok_no_list">Connected. This server does not list its shares; please type the share name.</string>
+    <string name="smb_error_share_list">This server does not list its shares. Edit the server and enter a share name.</string>
     <string name="transfer_history">History</string>
     <string name="transfer_failed">Transfer failed</string>
     <string name="transfer_cancelled">Cancelled</string>
@@ -407,6 +409,11 @@ Run this adb command from a computer, then reopen OpenFX:
     <string name="tv_pick_audio">Choose an audio file</string>
     <string name="tv_install_apk">Install APK</string>
     <string name="tv_install_apk_desc">Open from Download/OpenFX</string>
+    <string name="smb_error_not_configured">This server is not saved anymore. Please add it again.</string>
+    <string name="smb_error_auth">Login failed: wrong user name or password</string>
+    <string name="smb_error_access">Access denied or share not found: %1$s</string>
+    <string name="smb_error_unreachable">Cannot reach the server (%1$s)</string>
+    <string name="smb_downloading">Downloading %1$s from the network…</string>
     <string name="event_received">Received %2$s from %1$s</string>
     <string name="event_receive_error">Receive error: %1$s</string>
     <string name="event_receive_failed">Receive failed: %1$s (%2$s)</string>
@@ -416,5 +423,27 @@ Run this adb command from a computer, then reopen OpenFX:
     <string name="event_send_unreachable">Send failed: %1$s (cannot reach %2$s)</string>
     <string name="event_send_cancelled_no_pin">Send cancelled: %1$s (no pairing code entered)</string>
     <string name="event_send_pin_expired">Send failed: %1$s (pairing code changed, please send again)</string>
+    <string name="network_title">Network locations</string>
+    <string name="network_empty_hint">No NAS or computer shares yet.\nTap \"Add server\" and enter its IP or host name.</string>
+    <string name="network_add">Add server</string>
+    <string name="network_edit">Edit server</string>
+    <string name="network_open">Open %1$s</string>
+    <string name="network_host">IP or host name</string>
+    <string name="network_username">User name</string>
+    <string name="network_username_hint">Leave empty for guest</string>
+    <string name="network_password">Password</string>
+    <string name="network_password_keep">Leave empty to keep</string>
+    <string name="network_share">Share</string>
+    <string name="network_share_hint">Leave empty to list all</string>
+    <string name="network_share_all">(List all shares)</string>
+    <string name="network_display_name">Display name (optional)</string>
+    <string name="network_port">Port</string>
+    <string name="network_domain">Domain (optional)</string>
+    <string name="network_test">Test connection</string>
+    <plurals name="network_test_ok">
+        <item quantity="one">Connected, %1$d share found</item>
+        <item quantity="other">Connected, %1$d shares found</item>
+    </plurals>
+    <string name="network_chip">Network</string>
     <!-- /i18n:auto -->
 </resources>

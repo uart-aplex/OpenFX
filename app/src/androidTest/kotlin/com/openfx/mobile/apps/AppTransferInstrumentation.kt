@@ -10,6 +10,7 @@ import com.openfx.core.sync.TransferManager
 import com.openfx.core.sync.TransferStatus
 import com.openfx.core.sync.http.OpenFxDevice
 import com.openfx.core.sync.http.OpenFxHttpReceiver
+import com.openfx.mobile.network.SmbSelfTest
 import com.openfx.mobile.ui.MainActivity
 import com.openfx.mobile.ui.theme.OpenFXTheme
 import com.openfx.mobile.ui.transfer.TransferViewModel
@@ -30,9 +31,11 @@ class AppTransferInstrumentation : Instrumentation() {
     private var targetIp: String? = null
     /** 對方接收畫面上的配對碼 (sendToPeer 模式用) */
     private var targetPin: String? = null
+    private var arguments: Bundle = Bundle()
 
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        this.arguments = arguments ?: Bundle()
         mode = arguments?.getString("mode")
         targetIp = arguments?.getString("targetIp")
         targetPin = arguments?.getString("targetPin")
@@ -43,10 +46,12 @@ class AppTransferInstrumentation : Instrumentation() {
         thread {
             val result = Bundle()
             try {
+                var detail = ""
                 if (mode == "ui") showPicker()
                 else if (mode == "send") runBlocking { sendToPeer() }
+                else if (mode == "smb") detail = runBlocking { SmbSelfTest(targetContext, arguments).run() }
                 else runBlocking { verifyTransfer() }
-                result.putString("stream", "PASS: ${mode ?: "export / transfer / stage"}\n")
+                result.putString("stream", "PASS: ${mode ?: "export / transfer / stage"}\n$detail")
                 finish(-1, result)
             } catch (error: Throwable) {
                 result.putString("stream", "FAIL: ${error.stackTraceToString()}\n")

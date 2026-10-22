@@ -1,5 +1,9 @@
 package com.openfx.app.ui.tv.browser
 
+import com.openfx.mobile.ui.network.NetworkServersDialog
+import com.openfx.mobile.ui.browser.RemoteFetchBar
+import com.openfx.core.network.smb.SmbPath
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import com.openfx.mobile.R
@@ -69,8 +73,10 @@ import androidx.compose.runtime.collectAsState
 fun TvFileBrowserScreen(
     onBackToHome: () -> Unit,
     initialPath: String? = null,
+    openNetworkOnStart: Boolean = false,
     viewModel: FileBrowserViewModel = hiltViewModel()
 ) {
+    var showNetwork by remember { mutableStateOf(openNetworkOnStart) }
     val uiState by viewModel.uiState.collectAsState()
     var selectedFile by remember { mutableStateOf<FileItem?>(null) }
     var showSendDialog by remember { mutableStateOf(false) }
@@ -79,6 +85,11 @@ fun TvFileBrowserScreen(
 
     androidx.compose.runtime.LaunchedEffect(initialPath) {
         initialPath?.let { viewModel.navigateTo(it) }
+    }
+
+    // 換資料夾後清掉選取，避免「開啟」作用在上一個資料夾的檔案
+    androidx.compose.runtime.LaunchedEffect(uiState.currentPath) {
+        selectedFile = null
     }
 
     BackHandler {
@@ -113,6 +124,12 @@ fun TvFileBrowserScreen(
                 Text(stringResource(R.string.back))
             }
             Spacer(Modifier.width(12.dp))
+            Button(onClick = { showNetwork = true }) {
+                Icon(Icons.Default.Lan, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.network_chip))
+            }
+            Spacer(Modifier.width(12.dp))
             Button(onClick = { viewModel.navigateTo(uiState.currentPath) }) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -138,7 +155,8 @@ fun TvFileBrowserScreen(
             }
             Spacer(Modifier.width(12.dp))
             Button(
-                enabled = selectedFile?.isDirectory == false,
+                // OpenFX 傳檔只支援本機檔案；網路上的檔案請先複製到本機
+                enabled = selectedFile?.let { !it.isDirectory && !SmbPath.isSmb(it.path) } == true,
                 onClick = { showSendDialog = true }
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
@@ -158,6 +176,8 @@ fun TvFileBrowserScreen(
                 )
             }
         }
+
+        RemoteFetchBar(uiState.remoteFetch)
 
         Spacer(Modifier.height(24.dp))
 
@@ -211,6 +231,17 @@ fun TvFileBrowserScreen(
                 }
             }
         }
+    }
+
+    if (showNetwork) {
+        NetworkServersDialog(
+            onOpen = { path ->
+                showNetwork = false
+                selectedFile = null
+                viewModel.navigateTo(path)
+            },
+            onDismiss = { showNetwork = false }
+        )
     }
 
     if (showSendDialog && selectedFile != null) {

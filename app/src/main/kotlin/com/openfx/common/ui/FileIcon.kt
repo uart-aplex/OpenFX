@@ -11,18 +11,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.openfx.common.util.drawableToImageBitmap
 import com.openfx.common.util.loadApkIcon
-import java.io.File
+import com.openfx.core.file.FileItem
+import com.openfx.core.network.smb.SmbPath
 
 @Composable
 fun FileIcon(
-    file: File,
+    file: FileItem,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
-    val apkIcon = remember(file.absolutePath) {
-        if (file.name.endsWith(".apk", ignoreCase = true)) {
-            loadApkIcon(context, file.absolutePath)
+    val apkIcon = remember(file.path) {
+        // 網路上的 APK 要先下載才讀得到圖示，列表裡先用一般圖示
+        if (file.name.endsWith(".apk", ignoreCase = true) && !SmbPath.isSmb(file.path)) {
+            loadApkIcon(context, file.path)
         } else {
             null
         }

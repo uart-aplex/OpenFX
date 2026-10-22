@@ -1,5 +1,14 @@
 package com.openfx.mobile.ui.browser
 
+import com.openfx.core.network.smb.SmbServerRepository
+import com.openfx.core.network.smb.SmbShareListUnavailableException
+import com.openfx.core.network.smb.SmbPath
+import com.openfx.core.network.smb.SmbFileOperations
+import com.openfx.core.network.smb.SmbServerNotFoundException
+import com.openfx.core.network.smb.SmbAuthException
+import com.openfx.core.network.smb.SmbAccessDeniedException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.openfx.mobile.R
 import android.content.Context
 import android.content.ActivityNotFoundException
@@ -62,7 +71,14 @@ data class BrowserUiState(
     // 操作進度
     val operationProgress: TransferProgress? = null,
     val isOperating: Boolean = false,
+    // 開啟網路檔案前先下載到快取的進度
+    val remoteFetch: RemoteFetch? = null,
 )
+
+/** 正在從 SMB 下載到本機快取的檔案 */
+data class RemoteFetch(val name: String, val bytes: Long, val total: Long) {
+    val percent: Float get() = if (total > 0) bytes.toFloat() / total else 0f
+}
 
 enum class ViewMode { GRID, LIST }
 
@@ -72,6 +88,8 @@ class FileBrowserViewModel @Inject constructor(
     private val transferManager: TransferManager,
     private val settings: SettingsRepository,
     private val bookmarkRepo: BookmarkRepository,
+    private val smbFiles: SmbFileOperations,
+    private val smbServers: SmbServerRepository,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -79,6 +97,11 @@ class FileBrowserViewModel @Inject constructor(
     val uiState: StateFlow<BrowserUiState> = _uiState.asStateFlow()
 
     val bookmarks: StateFlow<Set<String>> = bookmarkRepo.bookmarks
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    /** 不提供共享清單的 SMB 伺服器 (host key)，往上導航到共享根目錄為止 */
+    private val hostsWithoutShareList: StateFlow<Set<String>> = smbServers.servers
+        .map { list -> list.filterNot { it.listsShares }.map { it.hostKey }.toSet() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     init {
@@ -164,16 +187,40 @@ class FileBrowserViewModel @Inject constructor(
                     )
                 }
             }.onFailure { e ->
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                if (e is SmbShareListUnavailableException) {
+                    // 之後不再往上走到伺服器根目錄；留在原本的資料夾
+                    smbServers.markNoShareList(e.hostKey)
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@onFailure
+                }
+                _uiState.update { it.copy(isLoading = false, error = describeError(e)) }
             }
         }
     }
 
+    /** SMB 相關例外轉成使用者看得懂的訊息，其他沿用原本的例外訊息 */
+    private fun describeError(e: Throwable): String = when (e) {
+        is SmbServerNotFoundException -> appContext.getString(R.string.smb_error_not_configured)
+        is SmbAuthException -> appContext.getString(R.string.smb_error_auth)
+        is SmbAccessDeniedException -> appContext.getString(R.string.smb_error_access, e.target)
+        is SmbShareListUnavailableException -> appContext.getString(R.string.smb_error_share_list)
+        is java.net.SocketTimeoutException,
+        is java.net.ConnectException,
+        is java.net.UnknownHostException,
+        is java.net.NoRouteToHostException -> appContext.getString(R.string.smb_error_unreachable, e.message.orEmpty())
+        else -> e.message ?: e.javaClass.simpleName
+    }
+
     fun navigateUp(): Boolean {
-        return if (canNavigateUp) {
-            navigateTo(_uiState.value.currentPath.substringBeforeLast('/'))
-            true
-        } else false
+        if (!canNavigateUp) return false
+        val current = _uiState.value.currentPath
+        val parent = if (SmbPath.isSmb(current)) {
+            SmbPath.parse(current).parent()?.toString() ?: return false
+        } else {
+            current.substringBeforeLast('/')
+        }
+        navigateTo(parent)
+        return true
     }
 
     /**
@@ -184,6 +231,12 @@ class FileBrowserViewModel @Inject constructor(
     val canNavigateUp: Boolean
         get() {
             val current = _uiState.value.currentPath
+            if (SmbPath.isSmb(current)) {
+                val smb = runCatching { SmbPath.parse(current) }.getOrNull() ?: return false
+                // 不給共享清單的伺服器：共享根目錄就是最上層
+                if (smb.isShareRoot && smb.hostKey in hostsWithoutShareList.value) return false
+                return smb.parent() != null
+            }
             val floors = _uiState.value.storageVolumes.map { it.path } +
                 Environment.getExternalStorageDirectory().absolutePath
 
@@ -324,7 +377,7 @@ class FileBrowserViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
-                        error = appContext.getString(R.string.error_operation_failed, e.message.orEmpty()),
+                        error = appContext.getString(R.string.error_operation_failed, describeError(e)),
                         isOperating = false,
                         operationProgress = null
                     )
@@ -346,6 +399,18 @@ class FileBrowserViewModel @Inject constructor(
         val paths = _uiState.value.selectedFiles.toList()
         if (paths.isEmpty()) return
 
+        if (paths.any(SmbPath::isSmb)) {
+            val items = _uiState.value.files.filter { it.path in paths && !it.isDirectory }
+            viewModelScope.launch {
+                val local = items.mapNotNull { item -> fetchToCache(item)?.path }
+                if (local.isNotEmpty()) shareLocal(local)
+            }
+            return
+        }
+        shareLocal(paths)
+    }
+
+    private fun shareLocal(paths: List<String>) {
         try {
             val uris = paths.mapNotNull { path ->
                 val file = File(path)
@@ -388,6 +453,10 @@ class FileBrowserViewModel @Inject constructor(
     // ===== 開啟檔案 =====
 
     fun openFile(fileItem: FileItem) {
+        if (SmbPath.isSmb(fileItem.path) && fileItem.fileType != FileType.VIDEO) {
+            withLocalCopy(fileItem) { openFile(it) }
+            return
+        }
         if (fileItem.fileType == FileType.APK) {
             installApk(fileItem)
             return
@@ -432,6 +501,10 @@ class FileBrowserViewModel @Inject constructor(
     // ===== 安裝 APK =====
 
     fun installApk(fileItem: FileItem) {
+        if (SmbPath.isSmb(fileItem.path)) {
+            withLocalCopy(fileItem) { installApk(it) }
+            return
+        }
         if (fileItem.extension.equals("apks", ignoreCase = true)) {
             runCatching {
                 appContext.startActivity(com.openfx.mobile.apps.AppPackageInstallerActivity.intent(appContext, File(fileItem.path)))
@@ -490,6 +563,68 @@ class FileBrowserViewModel @Inject constructor(
         } catch (e: Exception) {
             _uiState.update { it.copy(error = appContext.getString(R.string.error_install_failed, e.message.orEmpty())) }
         }
+    }
+
+    // ===== 網路檔案快取 =====
+
+    /**
+     * 網路 (smb://) 檔案先下載到快取再交給 [onReady]；本機檔案直接回呼。
+     * 畫面用這個處理圖片預覽、壓縮檔、APK 等需要本機檔案的功能。
+     */
+    fun withLocalCopy(fileItem: FileItem, onReady: (FileItem) -> Unit) {
+        if (!SmbPath.isSmb(fileItem.path)) {
+            onReady(fileItem)
+            return
+        }
+        viewModelScope.launch {
+            fetchToCache(fileItem)?.let(onReady)
+        }
+    }
+
+    /** 下載到 cache/remote；同一個檔案 (路徑、大小、修改時間都相同) 不重複下載 */
+    private suspend fun fetchToCache(fileItem: FileItem): FileItem? {
+        val dir = File(appContext.cacheDir, "remote/${fileItem.path.hashCode().toUInt().toString(16)}")
+        val target = File(dir, fileItem.name)
+        val cached = target.isFile && target.length() == fileItem.size &&
+            (fileItem.lastModified == 0L || target.lastModified() == fileItem.lastModified)
+
+        if (!cached) {
+            _uiState.update { it.copy(remoteFetch = RemoteFetch(fileItem.name, 0, fileItem.size)) }
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    dir.mkdirs()
+                    val partial = File(dir, "${fileItem.name}.part")
+                    smbFiles.openRead(fileItem.path).use { input ->
+                        partial.outputStream().use { output ->
+                            val buffer = ByteArray(256 * 1024)
+                            var done = 0L
+                            var lastUpdate = 0L
+                            while (true) {
+                                val read = input.read(buffer)
+                                if (read < 0) break
+                                output.write(buffer, 0, read)
+                                done += read
+                                if (done - lastUpdate >= 512 * 1024) {
+                                    lastUpdate = done
+                                    _uiState.update { it.copy(remoteFetch = RemoteFetch(fileItem.name, done, fileItem.size)) }
+                                }
+                            }
+                        }
+                    }
+                    target.delete()
+                    check(partial.renameTo(target)) { "Cannot finish download: ${target.name}" }
+                    if (fileItem.lastModified > 0) target.setLastModified(fileItem.lastModified)
+                }
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(error = appContext.getString(R.string.error_open_failed, describeError(e)))
+                }
+            }.isSuccess
+            _uiState.update { it.copy(remoteFetch = null) }
+            if (!ok) return null
+        }
+
+        return fileItem.copy(path = target.absolutePath)
     }
 
     // ===== 傳送到 OpenFX 裝置 =====
