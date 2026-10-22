@@ -108,6 +108,16 @@ class MainActivity : ComponentActivity() {
                                         onOpenVault = {
                                             startActivity(com.openfx.mobile.ui.vault.VaultActivity.intent(this@MainActivity))
                                         },
+                                        onOpenUsb = {
+                                            val usb = com.openfx.core.file.StorageVolumes.firstRemovable(this@MainActivity)
+                                            if (usb == null) {
+                                                android.widget.Toast.makeText(this@MainActivity, R.string.tv_usb_none, android.widget.Toast.LENGTH_LONG).show()
+                                            } else {
+                                                tvInitialPath = usb.path
+                                                tvOpenNetwork = false
+                                                tvRoute = TvRoute.FILES
+                                            }
+                                        },
                                     )
                                 }
 

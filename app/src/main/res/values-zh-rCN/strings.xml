@@ -490,4 +490,5 @@
     </plurals>
     <string name="vault_delete_originals">加密后删除原始文件 (建议)</string>
     <!-- /i18n:auto -->
+    <string name="tv_usb_none">未检测到 U 盘或 SD 卡，请插入后再试</string>
 </resources>

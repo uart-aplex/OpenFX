@@ -34,6 +34,7 @@ fun TvHomeScreen(
     onNavigateToDevices: () -> Unit = {},
     onNavigateToNetwork: () -> Unit = {},
     onOpenVault: () -> Unit = {},
+    onOpenUsb: () -> Unit = {},
 ) {
     val receiveFocusRequester = remember { FocusRequester() }
 
@@ -71,6 +72,7 @@ fun TvHomeScreen(
                                 item.opensFiles -> onNavigateToFiles()
                                 item.opensNetwork -> onNavigateToNetwork()
                                 item.opensVault -> onOpenVault()
+                                item.opensUsb -> onOpenUsb()
                             }
                         }
                     )
@@ -173,12 +175,13 @@ private data class QuickAccessItem(
     val isReceive: Boolean = false,
     val opensFiles: Boolean = false,
     val opensNetwork: Boolean = false,
-    val opensVault: Boolean = false
+    val opensVault: Boolean = false,
+    val opensUsb: Boolean = false
 )
 private val quickAccessItems = listOf(
     QuickAccessItem(Icons.Default.PhoneAndroid, R.string.tv_phone_to_tv, R.string.tv_open_receive_mode, isReceive = true),
     QuickAccessItem(Icons.Default.Folder, R.string.browser_internal_storage, R.string.tv_browse_tv_files, opensFiles = true),
-    QuickAccessItem(Icons.Default.Usb, R.string.tv_usb_device, R.string.tv_browse_external),
+    QuickAccessItem(Icons.Default.Usb, R.string.tv_usb_device, R.string.tv_browse_external, opensUsb = true),
     QuickAccessItem(Icons.Default.Lan, R.string.tv_local_network, R.string.tv_browse_network, opensNetwork = true),
     QuickAccessItem(Icons.Default.Lock, R.string.vault_entry, R.string.vault_entry_desc, opensVault = true),
     QuickAccessItem(Icons.Default.Download, R.string.shortcut_downloads, R.string.tv_view_downloads),

@@ -2,4 +2,5 @@
 <resources>
     <string name="core_storage_internal">內部儲存</string>
     <string name="core_storage_sd_card">SD 卡</string>
+    <string name="core_storage_usb">USB 裝置</string>
 </resources>

@@ -516,4 +516,5 @@
     </plurals>
     <string name="vault_delete_originals">加密後刪除原始檔案 (建議)</string>
     <!-- /i18n:auto -->
+    <string name="tv_usb_none">未偵測到 USB 隨身碟或 SD 卡，請插入後再試</string>
 </resources>

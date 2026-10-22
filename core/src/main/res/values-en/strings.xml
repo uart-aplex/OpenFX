@@ -2,4 +2,5 @@
 <resources>
     <string name="core_storage_internal">Internal storage</string>
     <string name="core_storage_sd_card">SD card</string>
+    <string name="core_storage_usb">USB drive</string>
 </resources>

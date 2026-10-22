@@ -162,45 +162,7 @@ class LocalFileOperations @Inject constructor(
         }
 
     override suspend fun getStorageVolumes(): List<StorageVolume> = withContext(Dispatchers.IO) {
-        val volumes = mutableListOf<StorageVolume>()
-
-        // 內部儲存
-        val internal = Environment.getExternalStorageDirectory()
-        val statFs = StatFs(internal.path)
-        volumes.add(
-            StorageVolume(
-                name = context.getString(R.string.core_storage_internal),
-                path = internal.absolutePath,
-                totalBytes = statFs.totalBytes,
-                usedBytes = statFs.totalBytes - statFs.availableBytes,
-                isRemovable = false
-            )
-        )
-
-        // 外部儲存 (SD 卡)
-        val externalDirs = context.getExternalFilesDirs(null)
-        externalDirs.drop(1).forEach { dir ->
-            if (dir != null) {
-                try {
-                    val sdStatFs = StatFs(dir.path)
-                    // 取得實際的 SD 卡根目錄
-                    val sdRoot = dir.path.substringBefore("/Android")
-                    volumes.add(
-                        StorageVolume(
-                            name = context.getString(R.string.core_storage_sd_card),
-                            path = sdRoot,
-                            totalBytes = sdStatFs.totalBytes,
-                            usedBytes = sdStatFs.totalBytes - sdStatFs.availableBytes,
-                            isRemovable = true
-                        )
-                    )
-                } catch (_: Exception) {
-                    // SD 卡可能未掛載
-                }
-            }
-        }
-
-        volumes
+        StorageVolumes.list(context)
     }
 
     override suspend fun search(

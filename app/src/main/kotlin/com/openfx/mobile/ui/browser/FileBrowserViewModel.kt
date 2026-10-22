@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.browser
 
+import com.openfx.core.file.StorageVolumes
 import com.openfx.core.network.smb.SmbServerRepository
 import com.openfx.core.network.smb.SmbShareListUnavailableException
 import com.openfx.core.network.smb.SmbPath
@@ -106,6 +107,7 @@ class FileBrowserViewModel @Inject constructor(
 
     init {
         loadStorageVolumes()
+        observeVolumeChanges()
         observeSettings()
         navigateTo(Environment.getExternalStorageDirectory().absolutePath)
     }
@@ -752,6 +754,19 @@ class FileBrowserViewModel @Inject constructor(
 
     private fun refresh() {
         navigateTo(_uiState.value.currentPath)
+    }
+
+    /** USB / SD 卡插拔：更新磁區清單；目前所在的磁區被拔掉就回內部儲存 */
+    private fun observeVolumeChanges() {
+        viewModelScope.launch {
+            StorageVolumes.changes(appContext).collect {
+                val volumes = fileOps.getStorageVolumes()
+                _uiState.update { it.copy(storageVolumes = volumes) }
+                val current = _uiState.value.currentPath
+                val gone = !SmbPath.isSmb(current) && volumes.none { current == it.path || current.startsWith("${it.path}/") }
+                if (gone) navigateTo(Environment.getExternalStorageDirectory().absolutePath)
+            }
+        }
     }
 
     private fun loadStorageVolumes() {
