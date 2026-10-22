@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.transfer
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
@@ -85,14 +87,15 @@ fun DeviceScreen(
     var selectedDevice by remember { mutableStateOf<OpenFxDevice?>(null) }
     var pendingSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
     var appSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
+    val resources = LocalResources.current
 
     val sendPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
         val target = pendingSendTarget
         when {
-            uris.isNullOrEmpty() -> viewModel.reportStatus("已取消選擇檔案")
-            target == null -> viewModel.reportStatus("傳送目標已遺失，請重新選擇 TV")
+            uris.isNullOrEmpty() -> viewModel.reportStatus(resources.getString(R.string.send_pick_cancelled))
+            target == null -> viewModel.reportStatus(resources.getString(R.string.send_target_lost))
             else -> {
                 viewModel.sendUris(uris, target)
                 onTransferStarted()
@@ -121,22 +124,28 @@ fun DeviceScreen(
                 } else ButtonDefaults.buttonColors(),
                 onClick = { if (isReceiving) viewModel.stopReceive() else viewModel.startReceive() }
             ) {
-                Text(if (isReceiving) "停止接收" else "我要接收")
+                Text(stringResource(if (isReceiving) R.string.receive_stop else R.string.receive_start))
             }
             Button(
                 modifier = Modifier.weight(1f),
                 enabled = !isScanning,
                 onClick = { viewModel.scan() }
             ) {
-                Text(if (isScanning) "掃描中…" else "掃描附近")
+                Text(stringResource(if (isScanning) R.string.scan_in_progress else R.string.device_scan_nearby))
             }
         }
 
         // ===== 狀態文字 =====
+        val localIpText = stringResource(
+            R.string.device_local_ip,
+            viewModel.localIp ?: stringResource(R.string.device_ip_unknown)
+        )
+        val receivingPortText = stringResource(R.string.device_receiving_port, 8989)
+        val lastEventText = lastEvent?.message(resources)
         val statusText = buildString {
-            append("本機 IP：${viewModel.localIp ?: "未取得"}")
-            if (isReceiving) append(" · 接收中 (Port 8989)")
-            lastEvent?.let { append("\n$it") }
+            append(localIpText)
+            if (isReceiving) append(receivingPortText)
+            lastEventText?.let { append("\n$it") }
             statusMessage?.let { append("\n$it") }
         }
         Text(
@@ -157,7 +166,7 @@ fun DeviceScreen(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("接收模式已啟動", fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.receive_mode_on), fontWeight = FontWeight.Medium)
                     receivePin?.let { pin ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -171,10 +180,16 @@ fun DeviceScreen(
                             }
                         }
                     }
-                    Text("儲存位置：${receiveDir ?: "Download/OpenFX"}", fontSize = 12.sp)
-                    Text("本次已接收：$receivedCount 個檔案", fontSize = 12.sp)
                     Text(
-                        "接收會在背景持續，離開此頁不會中斷。",
+                        stringResource(R.string.receive_save_dir, receiveDir ?: "Download/OpenFX"),
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        pluralStringResource(R.plurals.receive_count_session, receivedCount, receivedCount),
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        stringResource(R.string.receive_background_hint),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -182,7 +197,7 @@ fun DeviceScreen(
             }
         } else {
             Text(
-                "提示：對方裝置需先按「我要接收」，這裡才掃得到。",
+                stringResource(R.string.receive_tip_peer_first),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
@@ -200,7 +215,9 @@ fun DeviceScreen(
                 }
                 if (activeTasks.size > 3) {
                     Text(
-                        "還有 ${activeTasks.size - 3} 個任務，到「傳檔」頁查看全部",
+                        pluralStringResource(
+                            R.plurals.transfer_more_tasks, activeTasks.size - 3, activeTasks.size - 3
+                        ),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
@@ -251,7 +268,7 @@ fun DeviceScreen(
                 ) {
                     Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("傳送檔案（可複選）")
+                    Text(stringResource(R.string.send_files_multi))
                 }
                 Spacer(Modifier.height(8.dp))
                 Button(
@@ -267,7 +284,7 @@ fun DeviceScreen(
                     Text(stringResource(R.string.apps_send_installed))
                 }
                 Text(
-                    "傳送進度請到下方「傳檔」分頁查看",
+                    stringResource(R.string.send_progress_hint),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)
@@ -362,7 +379,7 @@ private fun NearbyDeviceList(
                 }
 
                 Text(
-                    "${devices.size} 個裝置",
+                    pluralStringResource(R.plurals.device_found_count, devices.size, devices.size),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -374,7 +391,7 @@ private fun NearbyDeviceList(
 
         item {
             Text(
-                "附近裝置",
+                stringResource(R.string.device_nearby_title),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -386,7 +403,7 @@ private fun NearbyDeviceList(
         if (devices.isEmpty()) {
             item {
                 Text(
-                    if (isScanning) "搜尋中…" else "尚未找到裝置",
+                    stringResource(if (isScanning) R.string.device_searching else R.string.device_none_found),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp)
@@ -416,7 +433,7 @@ private fun NearbyDeviceList(
                 trailingContent = {
                     Icon(
                         Icons.Default.Upload,
-                        contentDescription = "傳送檔案",
+                        contentDescription = stringResource(R.string.send_files),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

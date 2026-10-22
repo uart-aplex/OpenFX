@@ -13,15 +13,30 @@
    - `values-zh-rCN/` = Simplified Chinese
    - `values-zh-rHK/` = Hong Kong Chinese
 
-2. Translate all `<string>` values. **Do NOT change the `name` attribute.**
+   Also copy the small core module file (storage volume names):
+   ```
+   core/src/main/res/values/strings.xml → core/src/main/res/values-XX/strings.xml
+   ```
 
-3. Keep `%d` and `%s` format placeholders in place — they get replaced at runtime:
-   - `%d` = number (e.g. "3 selected")
-   - `%s` = text (e.g. error messages, device names)
+2. Translate all `<string>` values and every `<item>` inside `<plurals>`. **Do NOT change the `name` attribute.**
+   For `<plurals>`, add the quantities your language needs (`one`, `few`, `many`, `other`…);
+   languages without plural forms (Chinese, Japanese, Korean…) only need `other`.
+
+3. Keep format placeholders in place — they get replaced at runtime:
+   - `%1$d`, `%d` = number (e.g. "3 selected")
+   - `%1$s`, `%s` = text (e.g. error messages, device names)
+   - The `1$` / `2$` part is the argument order; you may reorder them to fit your grammar.
 
 4. Keep `\n` for line breaks.
 
-5. Test by changing your phone language in Settings → System → Language.
+5. Test by switching only OpenFX's language — no need to change the whole device:
+   - Android 13+: Settings → Apps → OpenFX → Language
+   - Or with adb (works on Android TV too):
+     ```
+     adb shell cmd locale set-app-locales com.openfx.mobile --locales ja
+     adb shell cmd locale set-app-locales com.openfx.mobile --locales ''   # back to system language
+     ```
+   New `values-XX` folders are picked up automatically (`generateLocaleConfig` in `app/build.gradle.kts`).
 
 ## Current languages
 

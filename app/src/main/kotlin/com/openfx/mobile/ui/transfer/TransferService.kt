@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.transfer
 
+import com.openfx.mobile.R
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -96,8 +97,8 @@ class TransferService : Service() {
         startForegroundWithNotification(
             NotificationUi(
                 isTransferring = false,
-                title = "OpenFX 接收待命中",
-                text = "等待其他裝置傳檔…",
+                title = getString(R.string.notify_receive_standby),
+                text = getString(R.string.notify_waiting),
                 progressPercent = null
             )
         )
@@ -148,21 +149,26 @@ class TransferService : Service() {
                     val percent = (receiving.progress * 100).toInt().coerceIn(0, 100)
                     NotificationUi(
                         isTransferring = true,
-                        title = "正在接收：${receiving.fileName}",
+                        title = getString(R.string.notify_receiving, receiving.fileName),
                         text = "$percent%",
                         progressPercent = percent
                     )
                 } else {
                     val text = when {
                         // 「傳輸完成通知」關閉時只顯示待命文字
-                        !notifyEnabled -> "等待其他裝置傳檔…"
-                        count > 0 && event != null -> "本次已接收 $count 個檔案 · $event"
-                        count > 0 -> "本次已接收 $count 個檔案"
-                        else -> "等待其他裝置傳檔…"
+                        !notifyEnabled -> getString(R.string.notify_waiting)
+                        count > 0 && event != null -> resources.getQuantityString(
+                            R.plurals.notify_received_count_event, count, count, event.message(resources)
+                        )
+                        count > 0 -> resources.getQuantityString(
+                            R.plurals.notify_received_count, count, count
+                        )
+                        else -> getString(R.string.notify_waiting)
                     }
                     NotificationUi(
                         isTransferring = false,
-                        title = pin?.let { "OpenFX 接收待命中 · 配對碼 $it" } ?: "OpenFX 接收待命中",
+                        title = pin?.let { getString(R.string.notify_receive_standby_pin, it) }
+                            ?: getString(R.string.notify_receive_standby),
                         text = text,
                         progressPercent = null
                     )
@@ -244,7 +250,7 @@ class TransferService : Service() {
             .setContentTitle(ui.title)
             .setContentText(ui.text)
             .setContentIntent(openApp)
-            .addAction(0, "停止接收", stopAction)
+            .addAction(0, getString(R.string.notify_stop_receive), stopAction)
             .setOngoing(true)
             .setSilent(true)
             .setOnlyAlertOnce(true)
@@ -258,7 +264,7 @@ class TransferService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "檔案傳輸",
+                getString(R.string.notify_channel_transfer),
                 NotificationManager.IMPORTANCE_LOW
             )
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)

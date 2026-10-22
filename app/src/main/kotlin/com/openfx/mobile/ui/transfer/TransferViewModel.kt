@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.transfer
 
+import com.openfx.core.sync.TransferEvent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -48,7 +49,7 @@ class TransferViewModel @Inject constructor(
     fun consumeReceivedApp(path: String) = transferManager.consumeReceivedApp(path)
     val activeTasks: StateFlow<List<TransferTask>> = transferManager.activeTasks
     val history: StateFlow<List<TransferTask>> = transferManager.history
-    val lastEvent: StateFlow<String?> = transferManager.lastEvent
+    val lastEvent: StateFlow<TransferEvent?> = transferManager.lastEvent
 
     // ===== 配對碼 =====
     val pinRequest: StateFlow<PinRequest?> = transferManager.pinRequest
@@ -186,7 +187,9 @@ class TransferViewModel @Inject constructor(
     }
 
     fun sendUris(uris: List<Uri>, device: OpenFxDevice) {
-        _statusMessage.value = "正在準備 ${uris.size} 個檔案…"
+        _statusMessage.value = appContext.resources.getQuantityString(
+            R.plurals.send_preparing_files, uris.size, uris.size
+        )
         viewModelScope.launch(Dispatchers.IO) {
             var queued = 0
             var failed = 0
@@ -212,11 +215,11 @@ class TransferViewModel @Inject constructor(
                             senderDeviceName = senderDeviceName
                         ) {
                             appContext.contentResolver.openInputStream(uri)
-                                ?: throw FileNotFoundException("無法開啟 $name")
+                                ?: throw FileNotFoundException("Cannot open $name")
                         }
                     } else {
                         val temp = spoolToTemp(uri, name)
-                        check(temp.length() > 0) { "檔案內容為空" }
+                        check(temp.length() > 0) { "File is empty" }
                         transferManager.sendFiles(
                             listOf(temp.absolutePath),
                             device,
@@ -230,9 +233,13 @@ class TransferViewModel @Inject constructor(
             }
 
             _statusMessage.value = when {
-                queued > 0 && failed > 0 -> "已開始傳送 $queued 個檔案，另有 $failed 個無法讀取"
-                queued > 0 -> "正在傳送 $queued 個檔案到 ${device.deviceName}"
-                else -> "選取的檔案無法讀取，請改選本機檔案後重試"
+                queued > 0 && failed > 0 -> appContext.resources.getQuantityString(
+                    R.plurals.send_queued_with_failures, queued, queued, failed
+                )
+                queued > 0 -> appContext.resources.getQuantityString(
+                    R.plurals.send_queued_to, queued, queued, device.deviceName
+                )
+                else -> appContext.getString(R.string.send_unreadable)
             }
         }
     }
@@ -288,7 +295,7 @@ class TransferViewModel @Inject constructor(
         val temp = File(spoolDir, "${System.currentTimeMillis()}_$safeName")
         appContext.contentResolver.openInputStream(uri)?.use { input ->
             temp.outputStream().use { output -> input.copyTo(output) }
-        } ?: throw FileNotFoundException("無法開啟 $name")
+        } ?: throw FileNotFoundException("Cannot open $name")
         return temp
     }
 }

@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.browser
 
+import com.openfx.mobile.R
 import android.content.Context
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -241,7 +242,7 @@ class FileBrowserViewModel @Inject constructor(
                 clearSelection()
                 refresh()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = "刪除失敗: ${e.message}") }
+                _uiState.update { it.copy(error = appContext.getString(R.string.error_delete_failed, e.message.orEmpty())) }
             }
         }
     }
@@ -252,7 +253,7 @@ class FileBrowserViewModel @Inject constructor(
                 clearSelection()
                 refresh()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = "重命名失敗: ${e.message}") }
+                _uiState.update { it.copy(error = appContext.getString(R.string.error_rename_failed, e.message.orEmpty())) }
             }
         }
     }
@@ -262,7 +263,7 @@ class FileBrowserViewModel @Inject constructor(
             fileOps.createDirectory(_uiState.value.currentPath, name).onSuccess {
                 refresh()
             }.onFailure { e ->
-                _uiState.update { it.copy(error = "建立資料夾失敗: ${e.message}") }
+                _uiState.update { it.copy(error = appContext.getString(R.string.error_create_folder_failed, e.message.orEmpty())) }
             }
         }
     }
@@ -323,7 +324,7 @@ class FileBrowserViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
-                        error = "操作失敗: ${e.message}",
+                        error = appContext.getString(R.string.error_operation_failed, e.message.orEmpty()),
                         isOperating = false,
                         operationProgress = null
                     )
@@ -374,13 +375,13 @@ class FileBrowserViewModel @Inject constructor(
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-            val chooser = Intent.createChooser(intent, "分享檔案")
+            val chooser = Intent.createChooser(intent, appContext.getString(R.string.share_chooser_title))
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             appContext.startActivity(chooser)
 
             clearSelection()
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = "分享失敗: ${e.message}") }
+            _uiState.update { it.copy(error = appContext.getString(R.string.error_share_failed, e.message.orEmpty())) }
         }
     }
 
@@ -401,7 +402,7 @@ class FileBrowserViewModel @Inject constructor(
                 }
                 appContext.startActivity(intent)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "無法播放: ${e.message}") }
+                _uiState.update { it.copy(error = appContext.getString(R.string.error_play_failed, e.message.orEmpty())) }
             }
             return
         }
@@ -422,9 +423,9 @@ class FileBrowserViewModel @Inject constructor(
             }
             appContext.startActivity(intent)
         } catch (e: ActivityNotFoundException) {
-            _uiState.update { it.copy(error = "找不到可以開啟此檔案的應用程式") }
+            _uiState.update { it.copy(error = appContext.getString(R.string.error_no_app_to_open)) }
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = "無法開啟: ${e.message}") }
+            _uiState.update { it.copy(error = appContext.getString(R.string.error_open_failed, e.message.orEmpty())) }
         }
     }
 
@@ -435,7 +436,7 @@ class FileBrowserViewModel @Inject constructor(
             runCatching {
                 appContext.startActivity(com.openfx.mobile.apps.AppPackageInstallerActivity.intent(appContext, File(fileItem.path)))
             }.onFailure { error ->
-                _uiState.update { it.copy(error = "無法安裝: ${error.message}") }
+                _uiState.update { it.copy(error = appContext.getString(R.string.error_install_failed, error.message.orEmpty())) }
             }
             return
         }
@@ -450,12 +451,12 @@ class FileBrowserViewModel @Inject constructor(
                 }
                 appContext.startActivity(settingsIntent)
                 _uiState.update {
-                    it.copy(error = "請允許 OpenFX 安裝未知應用程式，返回後再按一次「安裝」")
+                    it.copy(error = appContext.getString(R.string.install_allow_then_retry))
                 }
             } catch (e: Exception) {
                 // 部分 TV ROM 沒有這個設定頁
                 _uiState.update {
-                    it.copy(error = "請手動到系統設定允許 OpenFX 安裝未知應用程式")
+                    it.copy(error = appContext.getString(R.string.install_allow_manually))
                 }
             }
             return
@@ -487,7 +488,7 @@ class FileBrowserViewModel @Inject constructor(
                 appContext.startActivity(fallback)
             }
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = "無法安裝: ${e.message}") }
+            _uiState.update { it.copy(error = appContext.getString(R.string.error_install_failed, e.message.orEmpty())) }
         }
     }
 
@@ -530,7 +531,7 @@ class FileBrowserViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     showSendDialog = false,
-                    error = "選取項目沒有可傳送的檔案（資料夾請先壓縮）"
+                    error = appContext.getString(R.string.send_nothing_sendable)
                 )
             }
             return
@@ -541,7 +542,9 @@ class FileBrowserViewModel @Inject constructor(
             it.copy(
                 showSendDialog = false,
                 selectedFiles = emptySet(),
-                error = "已加入 ${paths.size} 個傳送任務，到「傳檔」頁查看進度"
+                error = appContext.resources.getQuantityString(
+                    R.plurals.send_tasks_added, paths.size, paths.size
+                )
             )
         }
     }

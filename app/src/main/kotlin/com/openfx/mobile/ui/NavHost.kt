@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Devices
@@ -30,13 +33,13 @@ import com.openfx.mobile.ui.settings.SettingsScreen
  */
 sealed class NavItem(
     val route: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector
 ) {
-    data object Files : NavItem("files", "檔案", Icons.Filled.Folder)
-    data object Devices : NavItem("devices", "裝置", Icons.Filled.Devices)
-    data object Transfer : NavItem("transfer", "傳檔", Icons.Filled.SwapVert)
-    data object Settings : NavItem("settings", "設定", Icons.Filled.Settings)
+    data object Files : NavItem("files", R.string.nav_files, Icons.Filled.Folder)
+    data object Devices : NavItem("devices", R.string.nav_devices, Icons.Filled.Devices)
+    data object Transfer : NavItem("transfer", R.string.nav_transfer, Icons.Filled.SwapVert)
+    data object Settings : NavItem("settings", R.string.nav_settings, Icons.Filled.Settings)
 }
 
 private val navItems = listOf(
@@ -82,8 +85,8 @@ fun OpenFXNavHost() {
                 Spacer(Modifier.height(8.dp))
                 navItems.forEach { item ->
                     NavigationRailItem(
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
+                        icon = { Icon(item.icon, contentDescription = stringResource(item.labelRes)) },
+                        label = { Text(stringResource(item.labelRes), style = MaterialTheme.typography.labelSmall) },
                         selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
                         onClick = { navigateTo(item.route) }
                     )
@@ -111,8 +114,8 @@ fun OpenFXNavHost() {
                 NavigationBar {
                     navItems.forEach { item ->
                         NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) },
+                            icon = { Icon(item.icon, contentDescription = stringResource(item.labelRes)) },
+                            label = { Text(stringResource(item.labelRes)) },
                             selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
                             onClick = { navigateTo(item.route) }
                         )

@@ -1,5 +1,8 @@
 package com.openfx.app.ui.tv.devices
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import com.openfx.mobile.ui.transfer.message
 import android.os.Environment
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
@@ -92,15 +95,18 @@ fun TvDevicesScreen(
         "OpenFX"
     ).absolutePath
 
+    val resources = LocalResources.current
+    val event = lastEvent
     val statusText = when {
         receivingTask != null -> {
             val percent = (receivingTask.progress * 100).toInt().coerceIn(0, 100)
-            "正在接收 ${receivingTask.fileName} · $percent%"
+            stringResource(R.string.tv_status_receiving, receivingTask.fileName, percent)
         }
-        isReceiving && lastEvent != null -> "$lastEvent · 接收模式持續開啟"
-        isReceiving -> "接收模式已啟動，手機現在可以掃描到這台 TV"
-        isScanning -> "正在掃描同一個 Wi-Fi 裡的 OpenFX 裝置..."
-        else -> "尚未開放接收手機檔案"
+        isReceiving && event != null ->
+            stringResource(R.string.tv_status_event_receiving, event.message(resources))
+        isReceiving -> stringResource(R.string.tv_status_receive_on)
+        isScanning -> stringResource(R.string.tv_status_scanning)
+        else -> stringResource(R.string.tv_status_receive_off)
     }
 
     LaunchedEffect(Unit) {
@@ -122,7 +128,7 @@ fun TvDevicesScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("手機傳檔到 TV", style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.tv_phone_to_tv), style = MaterialTheme.typography.headlineLarge)
                 Text(
                     statusText,
                     style = MaterialTheme.typography.bodyMedium,
@@ -134,19 +140,19 @@ fun TvDevicesScreen(
             Button(onClick = onBackToHome) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("首頁")
+                Text(stringResource(R.string.tv_home))
             }
             Spacer(Modifier.width(12.dp))
             Button(onClick = { onOpenReceivedFiles(receiveDirectory) }) {
                 Icon(Icons.Default.Folder, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("查看已接收")
+                Text(stringResource(R.string.tv_view_received))
             }
             Spacer(Modifier.width(12.dp))
             Button(onClick = { viewModel.scan() }, enabled = !isScanning) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (isScanning) "掃描中" else "掃描")
+                Text(stringResource(if (isScanning) R.string.scan_in_progress_short else R.string.scan))
             }
         }
         }
@@ -164,11 +170,20 @@ fun TvDevicesScreen(
             Icon(Icons.Default.Download, contentDescription = null, tint = stateColor, modifier = Modifier.size(48.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    if (isReceiving) "接收模式已開啟" else "接收模式未開啟",
+                    stringResource(if (isReceiving) R.string.tv_receive_mode_on else R.string.tv_receive_mode_off),
                     color = stateColor,
                     style = MaterialTheme.typography.headlineSmall
                 )
-                Text("${viewModel.localIp ?: "取得 IP 中"}:8989  ·  已接收 $receivedCount 個", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    pluralStringResource(
+                        R.plurals.tv_address_received,
+                        receivedCount,
+                        viewModel.localIp ?: stringResource(R.string.tv_getting_ip),
+                        8989,
+                        receivedCount
+                    ),
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 receivePin?.let { pin ->
                     // 遙控器距離遠 — 配對碼用大字顯示，手機端輸入時要看得清楚
                     Text(
@@ -195,7 +210,7 @@ fun TvDevicesScreen(
             ) {
                 Icon(if (isReceiving) Icons.Default.Stop else Icons.Default.Download, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (isReceiving) "停止接收" else "開始接收手機檔案")
+                Text(stringResource(if (isReceiving) R.string.receive_stop else R.string.tv_start_receive))
             }
         }
         }
@@ -209,7 +224,7 @@ fun TvDevicesScreen(
         }
 
         item {
-        Text("儲存位置：$receiveDirectory", style = MaterialTheme.typography.bodySmall)
+        Text(stringResource(R.string.receive_save_dir, receiveDirectory), style = MaterialTheme.typography.bodySmall)
         }
 
         item {
@@ -218,11 +233,11 @@ fun TvDevicesScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("其他接收裝置（TV 傳送用）", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.tv_other_receivers), style = MaterialTheme.typography.titleLarge)
             Button(onClick = onBrowseFilesToSend) {
                 Icon(Icons.Default.Folder, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("選擇檔案傳送")
+                Text(stringResource(R.string.tv_choose_files_to_send))
             }
         }
         }
@@ -230,7 +245,7 @@ fun TvDevicesScreen(
         if (devices.isEmpty()) {
             item {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
-                Text(if (isScanning) "正在尋找接收裝置..." else "若要從 TV 傳檔，請先讓對方開啟接收模式，再按「選擇檔案傳送」。")
+                Text(stringResource(if (isScanning) R.string.tv_finding_receivers else R.string.tv_send_hint))
             }
             }
         } else {
@@ -247,7 +262,10 @@ fun TvDevicesScreen(
                             Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(36.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(device.deviceName, style = MaterialTheme.typography.titleMedium)
-                                Text("${device.ip}:${device.port} · 可傳檔", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    stringResource(R.string.tv_device_ready, device.ip, device.port),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                             Button(onClick = {
                                 viewModel.consumeStatusMessage()
@@ -301,19 +319,19 @@ private fun TransferConnectionPanel(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     when {
-                        activeTask != null -> "已連線：${activeTask.targetDevice}"
-                        lastTask != null -> "最近連線：${lastTask.targetDevice}"
-                        isReceiving -> "等待手機連線"
-                        else -> "接收模式尚未啟動"
+                        activeTask != null -> stringResource(R.string.tv_conn_active, activeTask.targetDevice)
+                        lastTask != null -> stringResource(R.string.tv_conn_last, lastTask.targetDevice)
+                        isReceiving -> stringResource(R.string.tv_conn_waiting)
+                        else -> stringResource(R.string.tv_conn_receive_off)
                     },
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     when {
-                        activeTask != null -> "正在接收 ${activeTask.fileName}"
-                        lastTask != null -> "已完成 ${lastTask.fileName}"
-                        isReceiving -> "手機選擇檔案後，這裡會顯示即時進度"
-                        else -> "尚無接收中的傳輸"
+                        activeTask != null -> stringResource(R.string.tv_conn_receiving_file, activeTask.fileName)
+                        lastTask != null -> stringResource(R.string.tv_conn_finished_file, lastTask.fileName)
+                        isReceiving -> stringResource(R.string.tv_conn_progress_hint)
+                        else -> stringResource(R.string.tv_conn_idle)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
@@ -329,7 +347,7 @@ private fun TransferConnectionPanel(
             if (task != null) {
                 Text(
                     if (activeTask != null) "${(progress * 100).toInt()}%"
-                    else "完成",
+                    else stringResource(R.string.done),
                     style = MaterialTheme.typography.titleMedium
                 )
             }

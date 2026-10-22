@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,11 +36,11 @@ fun BookmarksDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("書籤") },
+        title = { Text(stringResource(R.string.sidebar_bookmarks)) },
         text = {
             if (bookmarks.isEmpty()) {
                 Text(
-                    "尚無書籤。\n點工具列的星標可把目前資料夾加入書籤。",
+                    stringResource(R.string.bookmarks_empty_hint),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -81,7 +83,7 @@ fun BookmarksDialog(
                                 IconButton(onClick = { onRemove(path) }) {
                                     Icon(
                                         Icons.Default.Delete,
-                                        contentDescription = "移除書籤",
+                                        contentDescription = stringResource(R.string.bookmark_remove),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -92,7 +94,7 @@ fun BookmarksDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("關閉") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
     )
 }

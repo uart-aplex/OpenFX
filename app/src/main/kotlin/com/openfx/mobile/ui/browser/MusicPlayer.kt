@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -111,7 +113,7 @@ fun AudioPlayerDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "正在播放",
+                            stringResource(R.string.music_now_playing),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -123,7 +125,7 @@ fun AudioPlayerDialog(
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "關閉")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                     }
                 }
 
@@ -151,7 +153,7 @@ fun AudioPlayerDialog(
                     if (bitmap != null) {
                         Image(
                             bitmap = bitmap,
-                            contentDescription = "專輯封面",
+                            contentDescription = stringResource(R.string.music_album_art),
                             modifier = Modifier.size(220.dp),
                             contentScale = ContentScale.Crop
                         )
@@ -228,7 +230,7 @@ fun AudioPlayerDialog(
                         enabled = state.currentIndex > 0,
                         onClick = { viewModel.previous() }
                     ) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "上一首")
+                        Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.music_previous))
                     }
 
                     FilledIconButton(
@@ -237,7 +239,7 @@ fun AudioPlayerDialog(
                     ) {
                         Icon(
                             if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isPlaying) "暫停" else "播放",
+                            contentDescription = stringResource(if (state.isPlaying) R.string.music_pause else R.string.music_play),
                             modifier = Modifier.size(34.dp)
                         )
                     }
@@ -246,7 +248,7 @@ fun AudioPlayerDialog(
                         enabled = state.currentIndex < state.playlist.lastIndex,
                         onClick = { viewModel.next() }
                     ) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "下一首")
+                        Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.music_next))
                     }
                 }
 
@@ -258,7 +260,7 @@ fun AudioPlayerDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "關閉此畫面後音樂會繼續播放",
+                    stringResource(R.string.music_keeps_playing),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )

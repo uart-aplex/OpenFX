@@ -21,6 +21,10 @@ data class ArchiveEntry(
     val isDirectory: Boolean
 )
 
+/** 不支援的壓縮格式 (xz/zst 等)，UI 依語系顯示說明 */
+class UnsupportedArchiveException(path: String) :
+    IllegalArgumentException("Unsupported archive format: $path")
+
 /**
  * 壓縮檔瀏覽與解壓
  *
@@ -53,10 +57,10 @@ object ArchiveOperations {
         withContext(Dispatchers.IO) {
             runCatching {
                 val file = File(path)
-                require(file.isFile) { "檔案不存在：$path" }
+                require(file.isFile) { "File not found: $path" }
 
                 val entries = when (kindOf(path)
-                    ?: throw IllegalArgumentException("不支援的壓縮格式 (xz/zst 暫不支援)")) {
+                    ?: throw UnsupportedArchiveException(path)) {
                     Kind.ZIP -> listZip(file)
                     Kind.RAR -> listRar(file)
                     Kind.SEVEN_Z -> list7z(file)
@@ -78,7 +82,7 @@ object ArchiveOperations {
     ): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
             val destDir = File(destDirPath).apply { mkdirs() }
-            require(destDir.isDirectory) { "無法建立目錄：$destDirPath" }
+            require(destDir.isDirectory) { "Cannot create directory: $destDirPath" }
             var count = 0
 
             fun writeTo(input: InputStream, entryName: String) {
@@ -93,7 +97,7 @@ object ArchiveOperations {
             }
 
             when (kindOf(archivePath)
-                ?: throw IllegalArgumentException("不支援的壓縮格式")) {
+                ?: throw UnsupportedArchiveException(archivePath)) {
                 Kind.ZIP -> {
                     ZipFile.builder().setFile(archivePath).get().use { zip ->
                         val entries = zip.entries

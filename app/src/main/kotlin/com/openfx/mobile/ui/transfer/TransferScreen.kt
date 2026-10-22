@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.transfer
 
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,7 +57,7 @@ fun TransferScreen(viewModel: TransferViewModel = hiltViewModel()) {
         if (activeTasks.isNotEmpty()) {
             item {
                 Text(
-                    "傳輸中",
+                    stringResource(R.string.transfer_active),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp)
@@ -80,12 +82,12 @@ fun TransferScreen(viewModel: TransferViewModel = hiltViewModel()) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "歷史記錄",
+                        stringResource(R.string.transfer_history),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     TextButton(onClick = { viewModel.clearHistory() }) {
-                        Text("清除全部", fontSize = 12.sp)
+                        Text(stringResource(R.string.transfer_clear_all), fontSize = 12.sp)
                     }
                 }
             }
@@ -112,11 +114,11 @@ fun TransferScreen(viewModel: TransferViewModel = hiltViewModel()) {
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "目前沒有傳輸任務",
+                            stringResource(R.string.transfer_empty_title),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "在裝置頁面選擇裝置開始傳檔",
+                            stringResource(R.string.transfer_empty_subtitle),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
@@ -176,21 +178,21 @@ fun TransferTaskItem(
                     }
 
                     TransferStatus.FAILED -> Text(
-                        "傳輸失敗",
+                        stringResource(R.string.transfer_failed),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 2.dp)
                     )
 
                     TransferStatus.CANCELLED -> Text(
-                        "已取消",
+                        stringResource(R.string.transfer_cancelled),
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 2.dp)
                     )
 
                     TransferStatus.COMPLETED -> Text(
-                        "傳輸完成",
+                        stringResource(R.string.transfer_done),
                         fontSize = 11.sp,
                         color = Color(0xFF2E7D32),
                         modifier = Modifier.padding(top = 2.dp)
@@ -205,7 +207,7 @@ fun TransferTaskItem(
                 TransferStatus.ACTIVE -> {
                     if (onCancel != null) {
                         IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "取消", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cancel), modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -213,7 +215,7 @@ fun TransferTaskItem(
                 TransferStatus.COMPLETED -> {
                     Icon(
                         Icons.Default.CheckCircle,
-                        contentDescription = "完成",
+                        contentDescription = stringResource(R.string.done),
                         tint = Color(0xFF2E7D32),
                         modifier = Modifier.size(20.dp)
                     )
@@ -222,7 +224,7 @@ fun TransferTaskItem(
                 TransferStatus.FAILED -> {
                     Icon(
                         Icons.Default.Error,
-                        contentDescription = "失敗",
+                        contentDescription = stringResource(R.string.transfer_failed_short),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp)
                     )
@@ -231,7 +233,7 @@ fun TransferTaskItem(
                 TransferStatus.CANCELLED -> {
                     Icon(
                         Icons.Default.Cancel,
-                        contentDescription = "已取消",
+                        contentDescription = stringResource(R.string.transfer_cancelled),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )

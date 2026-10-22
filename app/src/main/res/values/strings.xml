@@ -219,4 +219,210 @@
     <string name="pairing_pin_confirm">配對</string>
     <string name="pairing_pin_display">配對碼 %1$s</string>
     <string name="pairing_pin_regenerate">更換配對碼</string>
+    <!-- i18n:auto 由程式碼抽出的字串 -->
+    <string name="send_pick_cancelled">已取消選擇檔案</string>
+    <string name="send_target_lost">傳送目標已遺失，請重新選擇裝置</string>
+    <string name="receive_stop">停止接收</string>
+    <string name="receive_start">我要接收</string>
+    <string name="scan_in_progress">掃描中…</string>
+    <string name="device_local_ip">本機 IP：%1$s</string>
+    <string name="device_ip_unknown">未取得</string>
+    <string name="device_receiving_port"> · 接收中 (Port %1$d)</string>
+    <string name="receive_mode_on">接收模式已啟動</string>
+    <string name="receive_save_dir">儲存位置：%1$s</string>
+    <plurals name="receive_count_session">
+        <item quantity="other">本次已接收：%1$d 個檔案</item>
+    </plurals>
+    <string name="receive_background_hint">接收會在背景持續，離開此頁不會中斷。</string>
+    <string name="receive_tip_peer_first">提示：對方裝置需先按「我要接收」，這裡才掃得到。</string>
+    <plurals name="transfer_more_tasks">
+        <item quantity="other">還有 %1$d 個任務，到「傳檔」頁查看全部</item>
+    </plurals>
+    <string name="send_files_multi">傳送檔案（可複選）</string>
+    <string name="send_progress_hint">傳送進度請到下方「傳檔」分頁查看</string>
+    <string name="device_searching">搜尋中…</string>
+    <string name="device_none_found">尚未找到裝置</string>
+    <string name="send_files">傳送檔案</string>
+    <plurals name="device_found_count">
+        <item quantity="other">%1$d 個裝置</item>
+    </plurals>
+    <string name="apk_received_install_question">已收到 APK，是否安裝？</string>
+    <string name="apk_version">版本：%1$s</string>
+    <string name="unknown">未知</string>
+    <string name="apk_size">大小：%1$s</string>
+    <string name="apk_info_unreadable">無法讀取 APK 資訊，檔案可能已損壞。</string>
+    <string name="apk_permissions">要求的權限 (%1$d)：</string>
+    <plurals name="apk_permissions_more">
+        <item quantity="other">…等 %1$d 項</item>
+    </plurals>
+    <string name="install">安裝</string>
+    <string name="archive_read_failed">無法讀取壓縮檔</string>
+    <string name="archive_unsupported">不支援的壓縮格式 (xz/zst 暫不支援)</string>
+    <string name="archive_contents">壓縮檔內容</string>
+    <string name="archive_empty">壓縮檔是空的</string>
+    <plurals name="archive_file_count">
+        <item quantity="other">共 %1$d 個檔案</item>
+    </plurals>
+    <plurals name="archive_extracting">
+        <item quantity="other">解壓中…已處理 %1$d 個檔案</item>
+    </plurals>
+    <plurals name="archive_extracted">
+        <item quantity="other">已解壓 %1$d 個檔案到 %2$s/</item>
+    </plurals>
+    <string name="archive_extract_failed">解壓失敗</string>
+    <string name="archive_extract_all">全部解壓</string>
+    <string name="bookmarks_empty_hint">尚無書籤。\n點工具列的星標可把目前資料夾加入書籤。</string>
+    <string name="bookmark_remove">移除書籤</string>
+    <string name="music_now_playing">正在播放</string>
+    <string name="music_album_art">專輯封面</string>
+    <string name="music_previous">上一首</string>
+    <string name="music_pause">暫停</string>
+    <string name="music_play">播放</string>
+    <string name="music_next">下一首</string>
+    <string name="music_keeps_playing">關閉此畫面後音樂會繼續播放</string>
+    <string name="music_unknown_artist">未知演出者</string>
+    <string name="install_unknown_not_allowed">尚未允許 OpenFX 安裝未知來源的應用程式</string>
+    <string name="install_unknown_go_settings">請到系統設定允許 OpenFX 安裝未知來源的應用程式</string>
+    <string name="apk_install_failed_title">無法安裝 APK</string>
+    <string name="apk_received_missing">接收到的 APK 檔案已不存在</string>
+    <string name="send_no_receivers_phone">沒有找到裝置。\n請在另一台裝置的 OpenFX「裝置」頁按「我要接收」。</string>
+    <string name="apk_no_installer">系統找不到 APK 安裝器</string>
+    <string name="hidden_files">隱藏檔案</string>
+    <string name="search_files_hint">搜尋檔案…</string>
+    <string name="clear">清除</string>
+    <plurals name="clipboard_copied">
+        <item quantity="other">已複製 %1$d 個項目，前往目標資料夾後按貼上</item>
+    </plurals>
+    <plurals name="clipboard_cut">
+        <item quantity="other">已剪下 %1$d 個項目，前往目標資料夾後按貼上</item>
+    </plurals>
+    <string name="paste">貼上</string>
+    <string name="properties_folder_title">資料夾屬性</string>
+    <string name="properties_name">名稱: %1$s</string>
+    <string name="properties_path">路徑: %1$s</string>
+    <plurals name="properties_items">
+        <item quantity="other">項目數: %1$d 個</item>
+    </plurals>
+    <string name="properties_modified">修改時間: %1$s</string>
+    <string name="properties_readable">可讀: %1$s</string>
+    <string name="properties_writable">可寫: %1$s</string>
+    <string name="yes">是</string>
+    <string name="no">否</string>
+    <string name="sort_switch_to_desc">切換為降序</string>
+    <string name="sort_switch_to_asc">切換為升序</string>
+    <string name="selected">已選取</string>
+    <string name="error_operation_failed">操作失敗: %1$s</string>
+    <string name="share_chooser_title">分享檔案</string>
+    <string name="error_share_failed">分享失敗: %1$s</string>
+    <string name="error_play_failed">無法播放: %1$s</string>
+    <string name="error_no_app_to_open">找不到可以開啟此檔案的應用程式</string>
+    <string name="error_open_failed">無法開啟: %1$s</string>
+    <string name="error_install_failed">無法安裝: %1$s</string>
+    <string name="install_allow_then_retry">請允許 OpenFX 安裝未知應用程式，返回後再按一次「安裝」</string>
+    <string name="install_allow_manually">請手動到系統設定允許 OpenFX 安裝未知應用程式</string>
+    <string name="send_nothing_sendable">選取項目沒有可傳送的檔案（資料夾請先壓縮）</string>
+    <plurals name="send_tasks_added">
+        <item quantity="other">已加入 %1$d 個傳送任務，到「傳檔」頁查看進度</item>
+    </plurals>
+    <string name="settings_device_name_desc">其他 OpenFX 裝置掃描時會看到這個名稱</string>
+    <string name="settings_transfer_notify_detail">接收完成時在通知顯示檔案資訊</string>
+    <string name="sort_ascending">升序</string>
+    <string name="sort_descending">降序</string>
+    <string name="settings_sort_summary">%1$s (%2$s)</string>
+    <string name="settings_device_name_placeholder">例如：客廳電視</string>
+    <string name="save">儲存</string>
+    <string name="transfer_history">歷史記錄</string>
+    <string name="transfer_failed">傳輸失敗</string>
+    <string name="transfer_cancelled">已取消</string>
+    <string name="transfer_done">傳輸完成</string>
+    <string name="transfer_failed_short">失敗</string>
+    <string name="notify_receive_standby">OpenFX 接收待命中</string>
+    <string name="notify_receive_standby_pin">OpenFX 接收待命中 · 配對碼 %1$s</string>
+    <string name="notify_waiting">等待其他裝置傳檔…</string>
+    <string name="notify_receiving">正在接收：%1$s</string>
+    <plurals name="notify_received_count">
+        <item quantity="other">本次已接收 %1$d 個檔案</item>
+    </plurals>
+    <plurals name="notify_received_count_event">
+        <item quantity="other">本次已接收 %1$d 個檔案 · %2$s</item>
+    </plurals>
+    <string name="notify_stop_receive">停止接收</string>
+    <string name="notify_channel_transfer">檔案傳輸</string>
+    <plurals name="send_preparing_files">
+        <item quantity="other">正在準備 %1$d 個檔案…</item>
+    </plurals>
+    <plurals name="send_queued_with_failures">
+        <item quantity="other">已開始傳送 %1$d 個檔案，另有 %2$d 個無法讀取</item>
+    </plurals>
+    <plurals name="send_queued_to">
+        <item quantity="other">正在傳送 %1$d 個檔案到 %2$s</item>
+    </plurals>
+    <string name="send_unreadable">選取的檔案無法讀取，請改選本機檔案後重試</string>
+    <string name="refresh">重新整理</string>
+    <string name="tv_open_or_install">開啟/安裝</string>
+    <string name="send">傳送</string>
+    <string name="selected_file">已選取：%1$s</string>
+    <string name="folder_read_failed">無法讀取資料夾</string>
+    <string name="tv_selected_size">已選取 · %1$s</string>
+    <string name="folder">資料夾</string>
+    <string name="send_scanning_receivers">掃描附近接收端…</string>
+    <string name="send_no_receivers_tv">沒有找到裝置。請先在手機 OpenFX 按「我要接收」。</string>
+    <plurals name="send_found_devices">
+        <item quantity="other">找到 %1$d 個裝置</item>
+    </plurals>
+    <string name="rescan">重新掃描</string>
+    <string name="tv_status_receiving">正在接收 %1$s · %2$d%%</string>
+    <string name="tv_status_event_receiving">%1$s · 接收模式持續開啟</string>
+    <string name="tv_status_receive_on">接收模式已啟動，手機現在可以掃描到這台 TV</string>
+    <string name="tv_status_scanning">正在掃描同一個 Wi-Fi 裡的 OpenFX 裝置…</string>
+    <string name="tv_status_receive_off">尚未開放接收手機檔案</string>
+    <string name="tv_phone_to_tv">手機傳檔到 TV</string>
+    <string name="tv_home">首頁</string>
+    <string name="tv_view_received">查看已接收</string>
+    <string name="scan_in_progress_short">掃描中</string>
+    <string name="scan">掃描</string>
+    <string name="tv_receive_mode_on">接收模式已開啟</string>
+    <string name="tv_receive_mode_off">接收模式未開啟</string>
+    <string name="tv_getting_ip">取得 IP 中</string>
+    <plurals name="tv_address_received">
+        <item quantity="other">%1$s:%2$d  ·  已接收 %3$d 個</item>
+    </plurals>
+    <string name="tv_start_receive">開始接收手機檔案</string>
+    <string name="tv_other_receivers">其他接收裝置（TV 傳送用）</string>
+    <string name="tv_choose_files_to_send">選擇檔案傳送</string>
+    <string name="tv_finding_receivers">正在尋找接收裝置…</string>
+    <string name="tv_send_hint">若要從 TV 傳檔，請先讓對方開啟接收模式，再按「選擇檔案傳送」。</string>
+    <string name="tv_device_ready">%1$s:%2$d · 可傳檔</string>
+    <string name="tv_conn_active">已連線：%1$s</string>
+    <string name="tv_conn_last">最近連線：%1$s</string>
+    <string name="tv_conn_waiting">等待手機連線</string>
+    <string name="tv_conn_receive_off">接收模式尚未啟動</string>
+    <string name="tv_conn_receiving_file">正在接收 %1$s</string>
+    <string name="tv_conn_finished_file">已完成 %1$s</string>
+    <string name="tv_conn_progress_hint">手機選擇檔案後，這裡會顯示即時進度</string>
+    <string name="tv_conn_idle">尚無接收中的傳輸</string>
+    <string name="tv_open_receive_mode">開啟接收模式</string>
+    <string name="tv_browse_tv_files">瀏覽 TV 檔案</string>
+    <string name="tv_browse_external">瀏覽外接儲存</string>
+    <string name="tv_browse_network">瀏覽網路裝置</string>
+    <string name="tv_view_downloads">查看下載檔案</string>
+    <string name="tv_frequent">常用功能</string>
+    <string name="tv_play_video">播放影片</string>
+    <string name="tv_pick_local_video">選擇本機影片</string>
+    <string name="tv_browse_photos">瀏覽照片</string>
+    <string name="tv_open_pictures">開啟圖片資料夾</string>
+    <string name="tv_play_music">播放音樂</string>
+    <string name="tv_pick_audio">選擇音訊檔案</string>
+    <string name="tv_install_apk">安裝 APK</string>
+    <string name="tv_install_apk_desc">從 Download/OpenFX 開啟</string>
+    <string name="event_received">已從 %1$s 接收 %2$s</string>
+    <string name="event_receive_error">接收錯誤：%1$s</string>
+    <string name="event_receive_failed">接收失敗：%1$s (%2$s)</string>
+    <string name="event_not_enough_space">儲存空間不足，無法接收 %1$s</string>
+    <string name="event_send_failed">傳送失敗：%1$s</string>
+    <string name="event_send_failed_detail">傳送失敗：%1$s (%2$s)</string>
+    <string name="event_send_unreachable">傳送失敗：%1$s (無法連線到 %2$s)</string>
+    <string name="event_send_cancelled_no_pin">已取消傳送：%1$s (未輸入配對碼)</string>
+    <string name="event_send_pin_expired">傳送失敗：%1$s (配對碼已失效，請重新傳送)</string>
+    <!-- /i18n:auto -->
 </resources>

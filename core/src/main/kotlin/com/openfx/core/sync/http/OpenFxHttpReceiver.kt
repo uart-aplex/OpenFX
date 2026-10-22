@@ -37,6 +37,9 @@ class OpenFxHttpReceiver(
 ) {
     companion object {
         const val PIN_HEADER = "X-OpenFX-Pin"
+
+        /** onFailed 的 reason：儲存空間不足 */
+        const val REASON_NO_SPACE = "no_space"
         private const val MAX_PIN_FAILURES = 5
         private const val LOCKOUT_MS = 60_000L
         private const val MAX_CONNECTIONS = 8
@@ -202,7 +205,7 @@ class OpenFxHttpReceiver(
                             contentType = "text/plain; charset=utf-8",
                             body = "Not enough free space"
                         )
-                        onError("儲存空間不足，無法接收 $filename")
+                        onFailed(filename, REASON_NO_SPACE)
                         return
                     }
 

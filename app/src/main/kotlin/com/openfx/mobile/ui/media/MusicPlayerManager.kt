@@ -1,5 +1,6 @@
 package com.openfx.mobile.ui.media
 
+import com.openfx.mobile.R
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
@@ -226,7 +227,7 @@ class MusicPlayerManager @Inject constructor(
             val updated = track.copy(
                 title = metadata.title?.toString()?.takeIf { it.isNotBlank() } ?: track.title,
                 artist = metadata.artist?.toString()?.takeIf { it.isNotBlank() }
-                    ?: track.artist.ifBlank { "未知演出者" },
+                    ?: track.artist.ifBlank { context.getString(R.string.music_unknown_artist) },
                 album = metadata.albumTitle?.toString()?.takeIf { it.isNotBlank() } ?: track.album,
                 artwork = metadata.artworkData ?: track.artwork
             )

@@ -1,5 +1,6 @@
 package com.openfx.app.ui.tv.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -52,19 +53,19 @@ fun TvHomeScreen(
 
         // 快速存取列
         item {
-            Text("快速存取", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            Text(stringResource(R.string.tv_quick_access), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
             LazyRow(contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(quickAccessItems) { item ->
                     TvQuickAccessCard(
                         icon = item.icon,
-                        label = item.label,
-                        description = item.description,
+                        label = stringResource(item.labelRes),
+                        description = stringResource(item.descriptionRes),
                         accent = item.isReceive,
                         modifier = if (item.isReceive) Modifier.focusRequester(receiveFocusRequester) else Modifier,
                         onClick = {
                             when {
                                 item.isReceive -> onNavigateToDevices()
-                                item.label == "內部儲存" -> onNavigateToFiles()
+                                item.opensFiles -> onNavigateToFiles()
                             }
                         }
                     )
@@ -73,12 +74,17 @@ fun TvHomeScreen(
         }
 
         item {
-            Text("常用功能", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp, top = 8.dp))
+            Text(stringResource(R.string.tv_frequent), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp, top = 8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(fileManagerItems) { item ->
-                    TvFileCard(name = item.name, type = item.type, size = item.description, onClick = {
+                    TvFileCard(
+                        name = stringResource(item.nameRes),
+                        type = item.type,
+                        size = stringResource(item.descriptionRes),
+                        onClick = {
                         if (item.opensFiles) onNavigateToFiles()
-                    })
+                    }
+                    )
                 }
             }
         }
@@ -157,26 +163,27 @@ fun TvDeviceCard(name: String, icon: ImageVector, status: String, onClick: () ->
 // 假資料
 private data class QuickAccessItem(
     val icon: ImageVector,
-    val label: String,
-    val description: String,
-    val isReceive: Boolean = false
+    @StringRes val labelRes: Int,
+    @StringRes val descriptionRes: Int,
+    val isReceive: Boolean = false,
+    val opensFiles: Boolean = false
 )
 private val quickAccessItems = listOf(
-    QuickAccessItem(Icons.Default.PhoneAndroid, "手機傳檔到 TV", "開啟接收模式", isReceive = true),
-    QuickAccessItem(Icons.Default.Folder, "內部儲存", "瀏覽 TV 檔案"),
-    QuickAccessItem(Icons.Default.Usb, "USB 裝置", "瀏覽外接儲存"),
-    QuickAccessItem(Icons.Default.Lan, "區域網路", "瀏覽網路裝置"),
-    QuickAccessItem(Icons.Default.Download, "下載", "查看下載檔案"),
+    QuickAccessItem(Icons.Default.PhoneAndroid, R.string.tv_phone_to_tv, R.string.tv_open_receive_mode, isReceive = true),
+    QuickAccessItem(Icons.Default.Folder, R.string.browser_internal_storage, R.string.tv_browse_tv_files, opensFiles = true),
+    QuickAccessItem(Icons.Default.Usb, R.string.tv_usb_device, R.string.tv_browse_external),
+    QuickAccessItem(Icons.Default.Lan, R.string.tv_local_network, R.string.tv_browse_network),
+    QuickAccessItem(Icons.Default.Download, R.string.shortcut_downloads, R.string.tv_view_downloads),
 )
 private data class FileManagerItem(
-    val name: String,
+    @StringRes val nameRes: Int,
     val type: String,
-    val description: String,
+    @StringRes val descriptionRes: Int,
     val opensFiles: Boolean = true
 )
 private val fileManagerItems = listOf(
-    FileManagerItem("播放影片", "video", "選擇本機影片"),
-    FileManagerItem("瀏覽照片", "image", "開啟圖片資料夾"),
-    FileManagerItem("播放音樂", "audio", "選擇音訊檔案"),
-    FileManagerItem("安裝 APK", "apk", "從 Download/OpenFX 開啟")
+    FileManagerItem(R.string.tv_play_video, "video", R.string.tv_pick_local_video),
+    FileManagerItem(R.string.tv_browse_photos, "image", R.string.tv_open_pictures),
+    FileManagerItem(R.string.tv_play_music, "audio", R.string.tv_pick_audio),
+    FileManagerItem(R.string.tv_install_apk, "apk", R.string.tv_install_apk_desc)
 )

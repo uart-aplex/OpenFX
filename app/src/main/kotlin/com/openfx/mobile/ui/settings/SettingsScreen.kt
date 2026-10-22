@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.settings
 
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,41 +59,45 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
     LazyColumn {
         // ===== 檔案管理 =====
-        item { SectionHeader("檔案管理") }
+        item { SectionHeader(stringResource(R.string.settings_section_files)) }
         item {
             ToggleSetting(
-                "顯示隱藏檔案",
-                "以 . 開頭的檔案和資料夾",
+                stringResource(R.string.settings_show_hidden),
+                stringResource(R.string.settings_show_hidden_desc),
                 showHidden
             ) { viewModel.setShowHidden(it) }
         }
         item {
             NavigationSetting(
                 Icons.Default.GridView,
-                "預設檢視模式",
-                if (viewGrid) "網格" else "列表"
+                stringResource(R.string.settings_default_view),
+                stringResource(if (viewGrid) R.string.view_grid else R.string.view_list)
             ) { showViewModeDialog = true }
         }
         item {
             NavigationSetting(
                 Icons.Default.Sort,
-                "預設排序方式",
-                "${sortByLabel(sortBy)} (${if (sortAscending) "升序" else "降序"})"
+                stringResource(R.string.settings_default_sort),
+                stringResource(
+                    R.string.settings_sort_summary,
+                    sortByLabel(sortBy),
+                    stringResource(if (sortAscending) R.string.sort_ascending else R.string.sort_descending)
+                )
             ) { showSortDialog = true }
         }
 
         // ===== 裝置連線 =====
-        item { SectionHeader("裝置連線") }
+        item { SectionHeader(stringResource(R.string.settings_section_connection)) }
         item {
             NavigationSetting(
                 Icons.Default.PhoneAndroid,
-                "裝置名稱",
+                stringResource(R.string.settings_device_name),
                 deviceName
             ) { showDeviceNameDialog = true }
         }
         item {
             Text(
-                "其他 OpenFX 裝置掃描時會看到這個名稱",
+                stringResource(R.string.settings_device_name_desc),
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -99,20 +105,20 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         }
 
         // ===== 傳輸 =====
-        item { SectionHeader("傳輸") }
+        item { SectionHeader(stringResource(R.string.settings_section_transfer)) }
         item {
             ToggleSetting(
-                "傳輸完成通知",
-                "接收完成時在通知顯示檔案資訊",
+                stringResource(R.string.settings_transfer_notify),
+                stringResource(R.string.settings_transfer_notify_detail),
                 transferNotify
             ) { viewModel.setTransferNotify(it) }
         }
 
         // ===== 關於 =====
-        item { SectionHeader("關於") }
-        item { NavigationSetting(Icons.Default.Info, "版本", BuildConfig.VERSION_NAME) {} }
-        item { NavigationSetting(Icons.Default.Code, "原始碼", "github.com/openfx") {} }
-        item { NavigationSetting(Icons.Default.Description, "授權條款", "Apache License 2.0") {} }
+        item { SectionHeader(stringResource(R.string.settings_section_about)) }
+        item { NavigationSetting(Icons.Default.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME) {} }
+        item { NavigationSetting(Icons.Default.Code, stringResource(R.string.settings_source_code), "github.com/openfx") {} }
+        item { NavigationSetting(Icons.Default.Description, stringResource(R.string.settings_license), "Apache License 2.0") {} }
 
         item { Spacer(Modifier.height(32.dp)) }
     }
@@ -121,21 +127,21 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     if (showViewModeDialog) {
         AlertDialog(
             onDismissRequest = { showViewModeDialog = false },
-            title = { Text("預設檢視模式") },
+            title = { Text(stringResource(R.string.settings_default_view)) },
             text = {
                 Column {
-                    ChoiceRow("網格", selected = viewGrid) {
+                    ChoiceRow(stringResource(R.string.view_grid), selected = viewGrid) {
                         viewModel.setViewGrid(true)
                         showViewModeDialog = false
                     }
-                    ChoiceRow("列表", selected = !viewGrid) {
+                    ChoiceRow(stringResource(R.string.view_list), selected = !viewGrid) {
                         viewModel.setViewGrid(false)
                         showViewModeDialog = false
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showViewModeDialog = false }) { Text("取消") }
+                TextButton(onClick = { showViewModeDialog = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -144,7 +150,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     if (showSortDialog) {
         AlertDialog(
             onDismissRequest = { showSortDialog = false },
-            title = { Text("預設排序方式") },
+            title = { Text(stringResource(R.string.settings_default_sort)) },
             text = {
                 Column {
                     SortBy.entries.forEach { sort ->
@@ -153,16 +159,16 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    ChoiceRow("升序", selected = sortAscending) {
+                    ChoiceRow(stringResource(R.string.sort_ascending), selected = sortAscending) {
                         viewModel.setSortAscending(true)
                     }
-                    ChoiceRow("降序", selected = !sortAscending) {
+                    ChoiceRow(stringResource(R.string.sort_descending), selected = !sortAscending) {
                         viewModel.setSortAscending(false)
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showSortDialog = false }) { Text("完成") }
+                TextButton(onClick = { showSortDialog = false }) { Text(stringResource(R.string.done)) }
             }
         )
     }
@@ -172,13 +178,13 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         var name by remember { mutableStateOf(deviceName) }
         AlertDialog(
             onDismissRequest = { showDeviceNameDialog = false },
-            title = { Text("裝置名稱") },
+            title = { Text(stringResource(R.string.settings_device_name)) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     singleLine = true,
-                    placeholder = { Text("例如：Charlie 的手機") }
+                    placeholder = { Text(stringResource(R.string.settings_device_name_placeholder)) }
                 )
             },
             confirmButton = {
@@ -188,21 +194,24 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         viewModel.setDeviceName(name)
                         showDeviceNameDialog = false
                     }
-                ) { Text("儲存") }
+                ) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeviceNameDialog = false }) { Text("取消") }
+                TextButton(onClick = { showDeviceNameDialog = false }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
 }
 
-private fun sortByLabel(sortBy: SortBy): String = when (sortBy) {
-    SortBy.NAME -> "名稱"
-    SortBy.SIZE -> "大小"
-    SortBy.DATE -> "日期"
-    SortBy.TYPE -> "類型"
-}
+@Composable
+private fun sortByLabel(sortBy: SortBy): String = stringResource(
+    when (sortBy) {
+        SortBy.NAME -> R.string.sort_name
+        SortBy.SIZE -> R.string.sort_size
+        SortBy.DATE -> R.string.sort_date
+        SortBy.TYPE -> R.string.sort_type
+    }
+)
 
 @Composable
 private fun ChoiceRow(label: String, selected: Boolean, onClick: () -> Unit) {

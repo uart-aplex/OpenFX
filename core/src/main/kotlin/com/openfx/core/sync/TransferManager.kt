@@ -70,7 +70,10 @@ class TransferManager @Inject constructor(
     private val _receivePin = MutableStateFlow<String?>(null)
     val receivePin: StateFlow<String?> = _receivePin.asStateFlow()
 
-    private class PairingCancelledException : IOException("未輸入配對碼")
+    private class PairingCancelledException : IOException("Pairing code not entered")
+
+    private class PeerUnreachableException(val deviceName: String) :
+        IOException("Cannot reach $deviceName")
 
     private val _isReceiving = MutableStateFlow(false)
     val isReceiving: StateFlow<Boolean> = _isReceiving.asStateFlow()
@@ -98,9 +101,9 @@ class TransferManager @Inject constructor(
     private val _history = MutableStateFlow<List<TransferTask>>(emptyList())
     val history: StateFlow<List<TransferTask>> = _history.asStateFlow()
 
-    /** 最近一次事件訊息 (接收完成、錯誤等)，UI 狀態列用 */
-    private val _lastEvent = MutableStateFlow<String?>(null)
-    val lastEvent: StateFlow<String?> = _lastEvent.asStateFlow()
+    /** 最近一次事件 (接收完成、錯誤等)，UI 狀態列依語系組成文字 */
+    private val _lastEvent = MutableStateFlow<TransferEvent?>(null)
+    val lastEvent: StateFlow<TransferEvent?> = _lastEvent.asStateFlow()
 
     // ===== 接收 =====
 
@@ -128,10 +131,10 @@ class TransferManager @Inject constructor(
                     if (file.extension.lowercase() in setOf("apk", "apks")) {
                         _pendingAppInstalls.update { it + file.absolutePath }
                     }
-                    _lastEvent.value = "已從 $senderDeviceName 接收 ${file.name}"
+                    _lastEvent.value = TransferEvent.Received(file.name, senderDeviceName)
                 },
                 onError = { message ->
-                    _lastEvent.value = "接收錯誤：$message"
+                    _lastEvent.value = TransferEvent.ReceiveError(message)
                 },
                 onProgress = { fileName, received, total, senderDeviceName ->
                     updateReceiveProgress(fileName, received, total, senderDeviceName)
@@ -141,7 +144,7 @@ class TransferManager @Inject constructor(
                 }
             )
             instance.start()
-            check(instance.isRunning) { "接收端啟動失敗 (port $port 被佔用?)" }
+            check(instance.isRunning) { "Receiver failed to start (port $port in use?)" }
 
             advertiser = UdpDiscovery.startAdvertiser(deviceName, port, deviceId)
             receiver = instance
@@ -241,7 +244,11 @@ class TransferManager @Inject constructor(
             }
         }
         taskId?.let { moveToHistory(it) }
-        _lastEvent.value = "接收失敗：$fileName ($reason)"
+        _lastEvent.value = if (reason == OpenFxHttpReceiver.REASON_NO_SPACE) {
+            TransferEvent.NotEnoughSpace(fileName)
+        } else {
+            TransferEvent.ReceiveFailed(fileName, reason)
+        }
     }
 
     // ===== 傳送 =====
@@ -323,7 +330,7 @@ class TransferManager @Inject constructor(
                 if (handle.isCancelled) return@launch
                 val ok = upload(handle, taskId, pin)
                 finishSend(taskId, ok, size)
-                if (!ok) _lastEvent.value = "傳送失敗：$fileName"
+                if (!ok) _lastEvent.value = TransferEvent.SendFailed(fileName)
             } catch (_: OpenFxHttpSender.UploadCancelledException) {
                 // cancelTask 已標記 CANCELLED 並移入歷史
             } catch (_: PairingCancelledException) {
@@ -332,7 +339,7 @@ class TransferManager @Inject constructor(
                         it.copy(status = TransferStatus.CANCELLED, endTime = System.currentTimeMillis())
                     }
                     moveToHistory(taskId)
-                    _lastEvent.value = "已取消傳送：$fileName (未輸入配對碼)"
+                    _lastEvent.value = TransferEvent.SendCancelledNoPin(fileName)
                 }
             } catch (_: OpenFxHttpSender.PinRejectedException) {
                 // 預檢通過後對方才更換配對碼 — 清掉記住的碼，下次重新詢問
@@ -341,14 +348,18 @@ class TransferManager @Inject constructor(
                     it.copy(status = TransferStatus.FAILED, endTime = System.currentTimeMillis())
                 }
                 moveToHistory(taskId)
-                _lastEvent.value = "傳送失敗：$fileName (配對碼已失效，請重新傳送)"
+                _lastEvent.value = TransferEvent.SendPinExpired(fileName)
             } catch (e: Exception) {
                 if (!handle.isCancelled) {
                     updateTask(taskId) {
                         it.copy(status = TransferStatus.FAILED, endTime = System.currentTimeMillis())
                     }
                     moveToHistory(taskId)
-                    _lastEvent.value = "傳送失敗：$fileName (${e.message ?: "連線錯誤"})"
+                    _lastEvent.value = if (e is PeerUnreachableException) {
+                        TransferEvent.SendUnreachable(fileName, e.deviceName)
+                    } else {
+                        TransferEvent.SendFailed(fileName, e.message)
+                    }
                 }
             } finally {
                 uploads.remove(taskId)
@@ -404,7 +415,7 @@ class TransferManager @Inject constructor(
         when (OpenFxHttpSender.checkPin(device.ip, device.port, saved)) {
             OpenFxHttpSender.PinCheck.OK -> return@withLock saved
             OpenFxHttpSender.PinCheck.LEGACY -> return@withLock null
-            OpenFxHttpSender.PinCheck.UNREACHABLE -> throw IOException("無法連線到 ${device.deviceName}")
+            OpenFxHttpSender.PinCheck.UNREACHABLE -> throw PeerUnreachableException(device.deviceName)
             OpenFxHttpSender.PinCheck.WRONG,
             OpenFxHttpSender.PinCheck.LOCKED -> {
                 if (saved != null) settings.setPeerPin(device.peerKey, null)

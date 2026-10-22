@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.openfx.mobile.R
 import android.content.Context
 import android.content.res.Configuration
 import android.content.pm.PackageManager
@@ -131,7 +134,7 @@ fun ApkInstallDialog(
         modifier = if (isTv) Modifier.width(600.dp) else Modifier,
         properties = DialogProperties(usePlatformDefaultWidth = !isTv),
         onDismissRequest = onDismiss,
-        title = { Text(if (received) "已收到 APK，是否安裝？" else info?.appName ?: file.name) },
+        title = { Text(if (received) stringResource(R.string.apk_received_install_question) else info?.appName ?: file.name) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -154,13 +157,13 @@ fun ApkInstallDialog(
                         if (info != null) {
                             Text(info.packageName, fontSize = 12.sp)
                             Text(
-                                "版本：${info.versionName ?: "未知"}",
+                                stringResource(R.string.apk_version, info.versionName ?: stringResource(R.string.unknown)),
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
-                            "大小：${file.formattedSize}",
+                            stringResource(R.string.apk_size, file.formattedSize),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -171,14 +174,14 @@ fun ApkInstallDialog(
                     androidx.compose.material3.CircularProgressIndicator()
                 } else if (info == null) {
                     Text(
-                        "無法讀取 APK 資訊，檔案可能已損壞。",
+                        stringResource(R.string.apk_info_unreadable),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.error
                     )
                 } else if (info.permissions.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "要求的權限 (${info.permissions.size})：",
+                        stringResource(R.string.apk_permissions, info.permissions.size),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -191,7 +194,7 @@ fun ApkInstallDialog(
                     }
                     if (!isTv && info.permissions.size > 8) {
                         Text(
-                            "…等 ${info.permissions.size} 項",
+                            pluralStringResource(R.plurals.apk_permissions_more, info.permissions.size, info.permissions.size),
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -208,7 +211,7 @@ fun ApkInstallDialog(
                         containerColor = Color(0xFF0D6B4D), contentColor = Color.White,
                         focusedContainerColor = Color(0xFF57E3A1), focusedContentColor = Color(0xFF062B1C)
                     )
-                ) { androidx.tv.material3.Text("安裝") }
+                ) { androidx.tv.material3.Text(stringResource(R.string.install)) }
             } else {
             TextButton(
                 onClick = {
@@ -216,7 +219,7 @@ fun ApkInstallDialog(
                     onInstall()
                 },
                 enabled = info != null && !loading.value
-            ) { Text("安裝") }
+            ) { Text(stringResource(R.string.install)) }
             }
         },
         dismissButton = {
@@ -227,9 +230,9 @@ fun ApkInstallDialog(
                         containerColor = Color(0xFF252D31), contentColor = Color.White,
                         focusedContainerColor = Color(0xFF57E3A1), focusedContentColor = Color(0xFF062B1C)
                     )
-                ) { androidx.tv.material3.Text("取消") }
+                ) { androidx.tv.material3.Text(stringResource(R.string.cancel)) }
             } else {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
             }
         }
     )

@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.openfx.mobile.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -72,7 +75,7 @@ fun FileBrowserScreen(
         TopAppBar(
             title = {
                 if (viewModel.isMultiSelectMode) {
-                    Text("已選取 ${uiState.selectedFiles.size} 項")
+                    Text(stringResource(R.string.browser_selected_count, uiState.selectedFiles.size))
                 } else {
                     Text("OpenFX", style = MaterialTheme.typography.titleMedium)
                 }
@@ -80,35 +83,35 @@ fun FileBrowserScreen(
             navigationIcon = {
                 if (viewModel.isMultiSelectMode) {
                     IconButton(onClick = { viewModel.clearSelection() }) {
-                        Icon(Icons.Default.Close, contentDescription = "取消選取")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.browser_cancel_select))
                     }
                 } else if (viewModel.canNavigateUp) {
                     IconButton(onClick = { viewModel.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             },
             actions = {
                 if (viewModel.isMultiSelectMode) {
                     IconButton(onClick = { viewModel.selectAll() }) {
-                        Icon(Icons.Default.SelectAll, contentDescription = "全選")
+                        Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.browser_select_all))
                     }
                 } else {
                     IconButton(onClick = { viewModel.toggleBookmark(uiState.currentPath) }) {
                         Icon(
                             if (uiState.currentPath in bookmarks) Icons.Default.Star
                             else Icons.Default.StarBorder,
-                            contentDescription = "書籤"
+                            contentDescription = stringResource(R.string.action_bookmark)
                         )
                     }
                     IconButton(onClick = { viewModel.toggleSearchBar() }) {
-                        Icon(Icons.Default.Search, contentDescription = "搜尋")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                     }
                     IconButton(onClick = { viewModel.toggleShowHidden() }) {
                         Icon(
                             if (uiState.showHidden) Icons.Default.VisibilityOff
                             else Icons.Default.Visibility,
-                            contentDescription = "隱藏檔案"
+                            contentDescription = stringResource(R.string.hidden_files)
                         )
                     }
                 }
@@ -142,12 +145,12 @@ fun FileBrowserScreen(
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.search(it) },
-                placeholder = { Text("搜尋檔案…", fontSize = 14.sp) },
+                placeholder = { Text(stringResource(R.string.search_files_hint), fontSize = 14.sp) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.search("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "清除", modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.clear), modifier = Modifier.size(18.dp))
                         }
                     }
                 },
@@ -178,7 +181,7 @@ fun FileBrowserScreen(
                         modifier = Modifier.weight(1f)
                     )
                     TextButton(onClick = { viewModel.clearError() }) {
-                        Text("關閉", fontSize = 12.sp)
+                        Text(stringResource(R.string.close), fontSize = 12.sp)
                     }
                 }
             }
@@ -242,9 +245,15 @@ fun FileBrowserScreen(
                 ) {
                     val clip = uiState.clipboard
                     Text(
-                        text = if (clip?.mode == ClipboardMode.COPY)
-                            "已複製 ${clip.paths.size} 個項目，前往目標資料夾後按貼上"
-                        else "已剪下 ${clip?.paths?.size ?: 0} 個項目，前往目標資料夾後按貼上",
+                        text = run {
+                            val count = clip?.paths?.size ?: 0
+                            pluralStringResource(
+                                if (clip?.mode == ClipboardMode.COPY) R.plurals.clipboard_copied
+                                else R.plurals.clipboard_cut,
+                                count,
+                                count
+                            )
+                        },
                         fontSize = 12.sp,
                         modifier = Modifier.weight(1f),
                         color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -252,10 +261,10 @@ fun FileBrowserScreen(
                     TextButton(onClick = { viewModel.pasteClipboard() }) {
                         Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("貼上")
+                        Text(stringResource(R.string.paste))
                     }
                     TextButton(onClick = { viewModel.clearClipboard() }) {
-                        Text("取消", fontSize = 12.sp)
+                        Text(stringResource(R.string.cancel), fontSize = 12.sp)
                     }
                 }
             }
@@ -303,8 +312,8 @@ fun FileBrowserScreen(
     // ===== 對話框 =====
     if (uiState.showNewFolderDialog) {
         InputDialog(
-            title = "新增資料夾",
-            placeholder = "資料夾名稱",
+            title = stringResource(R.string.dialog_new_folder),
+            placeholder = stringResource(R.string.dialog_folder_name_hint),
             onConfirm = { name ->
                 viewModel.createFolder(name)
                 viewModel.hideNewFolderDialog()
@@ -317,8 +326,8 @@ fun FileBrowserScreen(
         val selectedPath = uiState.selectedFiles.first()
         val currentName = selectedPath.substringAfterLast('/')
         InputDialog(
-            title = "重命名",
-            placeholder = "新名稱",
+            title = stringResource(R.string.dialog_rename),
+            placeholder = stringResource(R.string.dialog_rename_hint),
             initialValue = currentName,
             onConfirm = { newName ->
                 viewModel.rename(selectedPath, newName)
@@ -331,8 +340,8 @@ fun FileBrowserScreen(
     if (uiState.showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { viewModel.hideDeleteConfirm() },
-            title = { Text("確認刪除") },
-            text = { Text("確定要刪除選取的 ${uiState.selectedFiles.size} 個項目嗎？此操作無法復原。") },
+            title = { Text(stringResource(R.string.dialog_delete_title)) },
+            text = { Text(stringResource(R.string.dialog_delete_message, uiState.selectedFiles.size)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -342,10 +351,10 @@ fun FileBrowserScreen(
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
-                ) { Text("刪除") }
+                ) { Text(stringResource(R.string.delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.hideDeleteConfirm() }) { Text("取消") }
+                TextButton(onClick = { viewModel.hideDeleteConfirm() }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -357,19 +366,30 @@ fun FileBrowserScreen(
         val dateFormat = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss", java.util.Locale.getDefault())
         AlertDialog(
             onDismissRequest = { viewModel.hidePropertiesDialog() },
-            title = { Text("資料夾屬性") },
+            title = { Text(stringResource(R.string.properties_folder_title)) },
             text = {
+                val yes = stringResource(R.string.yes)
+                val no = stringResource(R.string.no)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("名稱: ${file.name}", fontSize = 13.sp)
-                    Text("路徑: $path", fontSize = 13.sp)
-                    Text("項目數: ${uiState.files.size} 個", fontSize = 13.sp)
-                    Text("修改時間: ${dateFormat.format(java.util.Date(file.lastModified()))}", fontSize = 13.sp)
-                    Text("可讀: ${if (file.canRead()) "是" else "否"}", fontSize = 13.sp)
-                    Text("可寫: ${if (file.canWrite()) "是" else "否"}", fontSize = 13.sp)
+                    Text(stringResource(R.string.properties_name, file.name), fontSize = 13.sp)
+                    Text(stringResource(R.string.properties_path, path), fontSize = 13.sp)
+                    Text(
+                        pluralStringResource(R.plurals.properties_items, uiState.files.size, uiState.files.size),
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        stringResource(
+                            R.string.properties_modified,
+                            dateFormat.format(java.util.Date(file.lastModified()))
+                        ),
+                        fontSize = 13.sp
+                    )
+                    Text(stringResource(R.string.properties_readable, if (file.canRead()) yes else no), fontSize = 13.sp)
+                    Text(stringResource(R.string.properties_writable, if (file.canWrite()) yes else no), fontSize = 13.sp)
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.hidePropertiesDialog() }) { Text("關閉") }
+                TextButton(onClick = { viewModel.hidePropertiesDialog() }) { Text(stringResource(R.string.close)) }
             }
         )
     }
@@ -402,11 +422,11 @@ private data class Crumb(val label: String, val path: String)
 
 /** 快捷位置 — 位置選單和橫向側邊欄共用 */
 private val locationShortcuts = listOf(
-    Triple(Icons.Default.Download, "下載", "/storage/emulated/0/Download"),
-    Triple(Icons.Default.Image, "圖片", "/storage/emulated/0/DCIM"),
-    Triple(Icons.Default.VideoFile, "影片", "/storage/emulated/0/Movies"),
-    Triple(Icons.Default.AudioFile, "音樂", "/storage/emulated/0/Music"),
-    Triple(Icons.Default.Description, "文件", "/storage/emulated/0/Documents"),
+    Triple(Icons.Default.Download, R.string.shortcut_downloads, "/storage/emulated/0/Download"),
+    Triple(Icons.Default.Image, R.string.shortcut_images, "/storage/emulated/0/DCIM"),
+    Triple(Icons.Default.VideoFile, R.string.shortcut_videos, "/storage/emulated/0/Movies"),
+    Triple(Icons.Default.AudioFile, R.string.shortcut_music, "/storage/emulated/0/Music"),
+    Triple(Icons.Default.Description, R.string.shortcut_documents, "/storage/emulated/0/Documents"),
 )
 
 /**
@@ -414,11 +434,15 @@ private val locationShortcuts = listOf(
  * /storage/emulated/0/Download → [內部儲存, Download]
  * (不再把 storage/emulated/0 顯示成三段奇怪標籤)
  */
-private fun buildCrumbs(path: String, volumes: List<StorageVolume>): List<Crumb> {
+private fun buildCrumbs(
+    path: String,
+    volumes: List<StorageVolume>,
+    internalStorageName: String
+): List<Crumb> {
     val allVolumes = volumes.ifEmpty {
         listOf(
             StorageVolume(
-                "內部儲存",
+                internalStorageName,
                 android.os.Environment.getExternalStorageDirectory().absolutePath,
                 0, 0, false
             )
@@ -450,7 +474,10 @@ fun BreadcrumbBar(
     volumes: List<StorageVolume>,
     onNavigate: (String) -> Unit
 ) {
-    val crumbs = remember(path, volumes) { buildCrumbs(path, volumes) }
+    val internalStorageName = stringResource(R.string.browser_internal_storage)
+    val crumbs = remember(path, volumes, internalStorageName) {
+        buildCrumbs(path, volumes, internalStorageName)
+    }
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 1.dp
@@ -528,7 +555,7 @@ fun CategoryChipRow(
             FilterChip(
                 selected = currentPath == path || currentPath.startsWith("$path/"),
                 onClick = { onNavigate(path) },
-                label = { Text(label, fontSize = 12.sp) },
+                label = { Text(stringResource(label), fontSize = 12.sp) },
                 leadingIcon = {
                     Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
@@ -564,7 +591,7 @@ fun ViewModeBar(
         ) {
             Icon(
                 Icons.Default.GridView,
-                contentDescription = "網格",
+                contentDescription = stringResource(R.string.view_grid),
                 tint = if (viewMode == ViewMode.GRID)
                     MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -576,7 +603,7 @@ fun ViewModeBar(
         ) {
             Icon(
                 Icons.Default.ViewList,
-                contentDescription = "列表",
+                contentDescription = stringResource(R.string.view_list),
                 tint = if (viewMode == ViewMode.LIST)
                     MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant
@@ -588,14 +615,7 @@ fun ViewModeBar(
         Box {
             TextButton(onClick = onToggleSortMenu) {
                 Text(
-                    text = "排序: ${
-                        when (sortBy) {
-                            com.openfx.core.file.SortBy.NAME -> "名稱"
-                            com.openfx.core.file.SortBy.SIZE -> "大小"
-                            com.openfx.core.file.SortBy.DATE -> "日期"
-                            com.openfx.core.file.SortBy.TYPE -> "類型"
-                        }
-                    } ${if (sortAscending) "↑" else "↓"}",
+                    text = "${stringResource(R.string.sort_prefix)} ${sortLabel(sortBy)} ${if (sortAscending) "↑" else "↓"}",
                     fontSize = 12.sp
                 )
             }
@@ -603,12 +623,7 @@ fun ViewModeBar(
                 com.openfx.core.file.SortBy.entries.forEach { sort ->
                     DropdownMenuItem(
                         text = {
-                            Text(when (sort) {
-                                com.openfx.core.file.SortBy.NAME -> "名稱"
-                                com.openfx.core.file.SortBy.SIZE -> "大小"
-                                com.openfx.core.file.SortBy.DATE -> "日期"
-                                com.openfx.core.file.SortBy.TYPE -> "類型"
-                            })
+                            Text(sortLabel(sort))
                         },
                         onClick = { onSortChange(sort) },
                         leadingIcon = {
@@ -622,7 +637,13 @@ fun ViewModeBar(
                 }
                 HorizontalDivider()
                 DropdownMenuItem(
-                    text = { Text(if (sortAscending) "切換為降序" else "切換為升序") },
+                    text = {
+                        Text(
+                            stringResource(
+                                if (sortAscending) R.string.sort_switch_to_desc else R.string.sort_switch_to_asc
+                            )
+                        )
+                    },
                     onClick = {
                         onToggleSortOrder()
                         onToggleSortMenu()
@@ -677,7 +698,7 @@ fun FileGrid(
                     if (isSelected) {
                         Icon(
                             Icons.Default.CheckCircle,
-                            contentDescription = "已選取",
+                            contentDescription = stringResource(R.string.selected),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .size(16.dp)
@@ -778,7 +799,7 @@ fun FileList(
                     if (isSelected) {
                         Icon(
                             Icons.Default.CheckCircle,
-                            contentDescription = "已選取",
+                            contentDescription = stringResource(R.string.selected),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -816,14 +837,14 @@ fun ActionBar(
                 .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            ActionButton(Icons.Default.ContentCopy, "複製", onCopy)
-            ActionButton(Icons.AutoMirrored.Filled.InsertDriveFile, "移動", onMove)
+            ActionButton(Icons.Default.ContentCopy, stringResource(R.string.action_copy), onCopy)
+            ActionButton(Icons.AutoMirrored.Filled.InsertDriveFile, stringResource(R.string.action_move), onMove)
             if (singleSelected) {
-                ActionButton(Icons.Default.Edit, "重命名", onRename)
+                ActionButton(Icons.Default.Edit, stringResource(R.string.action_rename), onRename)
             }
-            ActionButton(Icons.Default.Send, "傳送", onSend)
-            ActionButton(Icons.Default.Delete, "刪除", onDelete)
-            ActionButton(Icons.Default.Share, "分享", onShare)
+            ActionButton(Icons.Default.Send, stringResource(R.string.send), onSend)
+            ActionButton(Icons.Default.Delete, stringResource(R.string.delete), onDelete)
+            ActionButton(Icons.Default.Share, stringResource(R.string.action_share), onShare)
         }
     }
 }
@@ -857,10 +878,10 @@ fun QuickActionBar(
                 .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            ActionButton(Icons.Default.CreateNewFolder, "新增", onNewFolder)
-            ActionButton(Icons.Default.SelectAll, "全選", onSelectAll)
-            ActionButton(Icons.Default.BookmarkBorder, "書籤", onBookmark)
-            ActionButton(Icons.Default.Info, "屬性", onProperties)
+            ActionButton(Icons.Default.CreateNewFolder, stringResource(R.string.action_new_folder), onNewFolder)
+            ActionButton(Icons.Default.SelectAll, stringResource(R.string.browser_select_all), onSelectAll)
+            ActionButton(Icons.Default.BookmarkBorder, stringResource(R.string.action_bookmark), onBookmark)
+            ActionButton(Icons.Default.Info, stringResource(R.string.action_properties), onProperties)
         }
     }
 }
@@ -892,10 +913,10 @@ fun InputDialog(
             TextButton(
                 onClick = { if (text.isNotBlank()) onConfirm(text.trim()) },
                 enabled = text.isNotBlank()
-            ) { Text("確認") }
+            ) { Text(stringResource(R.string.confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -918,7 +939,7 @@ fun FileContentArea(
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else if (uiState.files.isEmpty()) {
             Text(
-                text = "此資料夾為空",
+                text = stringResource(R.string.browser_folder_empty),
                 modifier = Modifier.align(Alignment.Center),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1023,6 +1044,8 @@ fun FileSidebar(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // LazyColumn 的 builder 不是 composable，預設磁區名稱先在外面取好
+    val internalStorageName = stringResource(R.string.browser_internal_storage)
     LazyColumn(
         modifier = modifier
             .fillMaxHeight()
@@ -1031,7 +1054,7 @@ fun FileSidebar(
         // 儲存空間
         item {
             Text(
-                "儲存空間",
+                stringResource(R.string.sidebar_storage),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium,
@@ -1041,13 +1064,16 @@ fun FileSidebar(
 
         items(volumes.ifEmpty {
             listOf(
-                StorageVolume("內部儲存", "/storage/emulated/0", 64_000_000_000, 32_000_000_000, false)
+                StorageVolume(
+                    internalStorageName,
+                    "/storage/emulated/0", 64_000_000_000, 32_000_000_000, false
+                )
             )
         }) { volume ->
             SidebarStorageItem(
                 name = volume.name,
                 usagePercent = volume.usagePercent,
-                freeText = "${volume.freeBytes / (1024 * 1024 * 1024)} GB 可用",
+                freeText = stringResource(R.string.sidebar_free_space, volume.freeBytes / (1024 * 1024 * 1024)),
                 isSelected = currentPath.startsWith(volume.path),
                 onClick = { onNavigate(volume.path) }
             )
@@ -1056,7 +1082,7 @@ fun FileSidebar(
         // 快捷位置
         item {
             Text(
-                "快捷位置",
+                stringResource(R.string.sidebar_shortcuts),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium,
@@ -1068,7 +1094,7 @@ fun FileSidebar(
             val (icon, label, path) = locationShortcuts[index]
             SidebarNavItem(
                 icon = icon,
-                label = label,
+                label = stringResource(label),
                 isSelected = currentPath == path,
                 onClick = { onNavigate(path) }
             )
@@ -1077,7 +1103,7 @@ fun FileSidebar(
         // 書籤
         item {
             Text(
-                "書籤",
+                stringResource(R.string.sidebar_bookmarks),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium,
@@ -1087,7 +1113,7 @@ fun FileSidebar(
         if (bookmarks.isEmpty()) {
             item {
                 Text(
-                    "尚無書籤",
+                    stringResource(R.string.sidebar_no_bookmarks),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -1219,7 +1245,7 @@ fun ImagePreviewDialog(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "關閉",
+                    contentDescription = stringResource(R.string.close),
                     tint = Color.White
                 )
             }
@@ -1254,3 +1280,13 @@ val FileType.color: Color
         FileType.CODE -> Color(0xFF546E7A)
         FileType.OTHER -> Color(0xFF757575)
     }
+
+@Composable
+private fun sortLabel(sortBy: com.openfx.core.file.SortBy): String = stringResource(
+    when (sortBy) {
+        com.openfx.core.file.SortBy.NAME -> R.string.sort_name
+        com.openfx.core.file.SortBy.SIZE -> R.string.sort_size
+        com.openfx.core.file.SortBy.DATE -> R.string.sort_date
+        com.openfx.core.file.SortBy.TYPE -> R.string.sort_type
+    }
+)

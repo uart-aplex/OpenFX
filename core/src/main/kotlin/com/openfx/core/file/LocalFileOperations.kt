@@ -1,5 +1,6 @@
 package com.openfx.core.file
 
+import com.openfx.core.R
 import android.content.Context
 import android.os.Environment
 import android.os.StatFs
@@ -176,7 +177,7 @@ class LocalFileOperations @Inject constructor(
         val statFs = StatFs(internal.path)
         volumes.add(
             StorageVolume(
-                name = "內部儲存",
+                name = context.getString(R.string.core_storage_internal),
                 path = internal.absolutePath,
                 totalBytes = statFs.totalBytes,
                 usedBytes = statFs.totalBytes - statFs.availableBytes,
@@ -194,7 +195,7 @@ class LocalFileOperations @Inject constructor(
                     val sdRoot = dir.path.substringBefore("/Android")
                     volumes.add(
                         StorageVolume(
-                            name = "SD 卡",
+                            name = context.getString(R.string.core_storage_sd_card),
                             path = sdRoot,
                             totalBytes = sdStatFs.totalBytes,
                             usedBytes = sdStatFs.totalBytes - sdStatFs.availableBytes,

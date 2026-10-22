@@ -1,5 +1,8 @@
 package com.openfx.app.ui.tv.browser
 
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.openfx.mobile.R
 import android.os.Handler
 import android.os.Looper
 import androidx.activity.compose.BackHandler
@@ -93,7 +96,7 @@ fun TvFileBrowserScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("檔案", style = MaterialTheme.typography.headlineLarge)
+                Text(stringResource(R.string.nav_files), style = MaterialTheme.typography.headlineLarge)
                 Text(
                     text = uiState.currentPath,
                     style = MaterialTheme.typography.bodyMedium,
@@ -107,13 +110,13 @@ fun TvFileBrowserScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("返回")
+                Text(stringResource(R.string.back))
             }
             Spacer(Modifier.width(12.dp))
             Button(onClick = { viewModel.navigateTo(uiState.currentPath) }) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("重新整理")
+                Text(stringResource(R.string.refresh))
             }
             Spacer(Modifier.width(12.dp))
             Button(
@@ -131,7 +134,7 @@ fun TvFileBrowserScreen(
             ) {
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("開啟/安裝")
+                Text(stringResource(R.string.tv_open_or_install))
             }
             Spacer(Modifier.width(12.dp))
             Button(
@@ -140,7 +143,7 @@ fun TvFileBrowserScreen(
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("傳送")
+                Text(stringResource(R.string.send))
             }
         }
 
@@ -148,7 +151,7 @@ fun TvFileBrowserScreen(
             if (!file.isDirectory) {
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "已選取：${file.name}",
+                    text = stringResource(R.string.selected_file, file.name),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -168,10 +171,10 @@ fun TvFileBrowserScreen(
             uiState.error != null -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(uiState.error ?: "無法讀取資料夾")
+                        Text(uiState.error ?: stringResource(R.string.folder_read_failed))
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { viewModel.navigateTo(uiState.currentPath) }) {
-                            Text("重試")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 }
@@ -179,7 +182,7 @@ fun TvFileBrowserScreen(
 
             uiState.files.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("這個資料夾是空的")
+                    Text(stringResource(R.string.browser_folder_empty))
                 }
             }
 
@@ -258,8 +261,8 @@ private fun TvFileItemCard(
                 )
                 Text(
                     text = when {
-                        isSelected -> "已選取 · ${file.formattedSize}"
-                        file.isDirectory -> "資料夾"
+                        isSelected -> stringResource(R.string.tv_selected_size, file.formattedSize)
+                        file.isDirectory -> stringResource(R.string.folder)
                         else -> file.formattedSize
                     },
                     maxLines = 1,
@@ -278,14 +281,12 @@ private fun TvSendFileDialog(
     transferViewModel: TransferViewModel = hiltViewModel()
 ) {
     var devices by remember { mutableStateOf<List<OpenFxDevice>>(emptyList()) }
-    var statusText by remember { mutableStateOf("掃描附近接收端...") }
     var isScanning by remember { mutableStateOf(true) }
     var isSending by remember { mutableStateOf(false) }
 
     fun scanDevices() {
         if (isScanning) return
         isScanning = true
-        statusText = "掃描附近接收端..."
         Thread {
             val localIp = LanDeviceScanner.getLocalIpAddress()
             val udpFound = UdpDiscovery.scan(timeoutMs = 2500)
@@ -300,11 +301,6 @@ private fun TvSendFileDialog(
             Handler(Looper.getMainLooper()).post {
                 devices = found
                 isScanning = false
-                statusText = if (found.isEmpty()) {
-                    "沒有找到裝置。請先在手機 OpenFX 按「我要接收」。"
-                } else {
-                    "找到 ${found.size} 個裝置"
-                }
             }
         }.start()
     }
@@ -314,9 +310,15 @@ private fun TvSendFileDialog(
         scanDevices()
     }
 
+    val statusText = when {
+        isScanning -> stringResource(R.string.send_scanning_receivers)
+        devices.isEmpty() -> stringResource(R.string.send_no_receivers_tv)
+        else -> pluralStringResource(R.plurals.send_found_devices, devices.size, devices.size)
+    }
+
     AlertDialog(
         onDismissRequest = { if (!isSending) onDismiss() },
-        title = { androidx.compose.material3.Text("傳送檔案") },
+        title = { androidx.compose.material3.Text(stringResource(R.string.send_files)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 androidx.compose.material3.Text(
@@ -350,7 +352,7 @@ private fun TvSendFileDialog(
                 enabled = !isScanning && !isSending,
                 onClick = { scanDevices() }
             ) {
-                androidx.compose.material3.Text("重新掃描")
+                androidx.compose.material3.Text(stringResource(R.string.rescan))
             }
         },
         dismissButton = {
@@ -358,7 +360,7 @@ private fun TvSendFileDialog(
                 enabled = !isSending,
                 onClick = onDismiss
             ) {
-                androidx.compose.material3.Text("關閉")
+                androidx.compose.material3.Text(stringResource(R.string.close))
             }
         }
     )

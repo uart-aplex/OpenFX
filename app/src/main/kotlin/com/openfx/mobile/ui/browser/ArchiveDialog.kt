@@ -1,5 +1,10 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.openfx.core.file.UnsupportedArchiveException
+import com.openfx.mobile.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -55,6 +60,7 @@ fun ArchiveDialog(
 ) {
     var entries by remember { mutableStateOf<List<ArchiveEntry>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    val resources = LocalResources.current
     var extracting by remember { mutableStateOf(false) }
     var extractedCount by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
@@ -62,7 +68,13 @@ fun ArchiveDialog(
     LaunchedEffect(file.path) {
         ArchiveOperations.listEntries(file.path)
             .onSuccess { entries = it }
-            .onFailure { error = it.message ?: "無法讀取壓縮檔" }
+            .onFailure {
+                error = if (it is UnsupportedArchiveException) {
+                    resources.getString(R.string.archive_unsupported)
+                } else {
+                    resources.getString(R.string.archive_read_failed)
+                }
+            }
     }
 
     Dialog(onDismissRequest = { if (!extracting) onDismiss() }) {
@@ -79,7 +91,7 @@ fun ArchiveDialog(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "壓縮檔內容",
+                    stringResource(R.string.archive_contents),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -101,12 +113,12 @@ fun ArchiveDialog(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            Text("讀取中…", fontSize = 13.sp)
+                            Text(stringResource(R.string.loading), fontSize = 13.sp)
                         }
                     }
 
                     entries!!.isEmpty() -> {
-                        Text("壓縮檔是空的", fontSize = 13.sp)
+                        Text(stringResource(R.string.archive_empty), fontSize = 13.sp)
                     }
 
                     else -> {
@@ -150,7 +162,7 @@ fun ArchiveDialog(
                             }
                         }
                         Text(
-                            "共 ${entries!!.count { !it.isDirectory }} 個檔案",
+                            entries!!.count { !it.isDirectory }.let { pluralStringResource(R.plurals.archive_file_count, it, it) },
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 6.dp)
@@ -165,7 +177,10 @@ fun ArchiveDialog(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        Text("解壓中…已處理 $extractedCount 個檔案", fontSize = 12.sp)
+                        Text(
+                            pluralStringResource(R.plurals.archive_extracting, extractedCount, extractedCount),
+                            fontSize = 12.sp
+                        )
                     }
                 }
 
@@ -178,7 +193,7 @@ fun ArchiveDialog(
                     TextButton(
                         enabled = !extracting,
                         onClick = onDismiss
-                    ) { Text("關閉") }
+                    ) { Text(stringResource(R.string.close)) }
                     Spacer(Modifier.width(8.dp))
                     TextButton(
                         enabled = !extracting && entries != null && error == null,
@@ -193,17 +208,25 @@ fun ArchiveDialog(
                                     extractedCount = done
                                 }
                                     .onSuccess { count ->
-                                        onExtracted("已解壓 $count 個檔案到 $destDirName/")
+                                        onExtracted(
+                                            resources.getQuantityString(
+                                                R.plurals.archive_extracted, count, count, destDirName
+                                            )
+                                        )
                                     }
                                     .onFailure { e ->
                                         extracting = false
-                                        error = e.message ?: "解壓失敗"
+                                        error = if (e is UnsupportedArchiveException) {
+                                            resources.getString(R.string.archive_unsupported)
+                                        } else {
+                                            resources.getString(R.string.archive_extract_failed)
+                                        }
                                     }
                             }
                         }
                     ) {
                         Text(
-                            "全部解壓",
+                            stringResource(R.string.archive_extract_all),
                             fontWeight = FontWeight.Medium
                         )
                     }

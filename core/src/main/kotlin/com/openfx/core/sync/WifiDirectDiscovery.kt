@@ -172,10 +172,10 @@ class WifiDirectDiscovery @Inject constructor(
 
                     override fun onFailure(reason: Int) {
                         val msg = when (reason) {
-                            WifiP2pManager.P2P_UNSUPPORTED -> "此裝置不支援 Wi-Fi Direct"
-                            WifiP2pManager.BUSY -> "Wi-Fi Direct 忙碌中"
-                            WifiP2pManager.ERROR -> "連線錯誤"
-                            else -> "未知錯誤 ($reason)"
+                            WifiP2pManager.P2P_UNSUPPORTED -> "Wi-Fi Direct is not supported on this device"
+                            WifiP2pManager.BUSY -> "Wi-Fi Direct is busy"
+                            WifiP2pManager.ERROR -> "Connection error"
+                            else -> "Unknown error ($reason)"
                         }
                         _pairingState.value = PairingState.Failed(msg)
                         cont.resumeWith(Result.failure(Exception(msg)))

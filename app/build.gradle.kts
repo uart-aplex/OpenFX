@@ -41,6 +41,10 @@ android {
         compose = true
         buildConfig = true
     }
+    // 依 values-xx 資料夾自動產生 locales_config，Android 13+ 可在系統設定單獨切換 App 語言
+    androidResources {
+        generateLocaleConfig = true
+    }
 }
 
 dependencies {

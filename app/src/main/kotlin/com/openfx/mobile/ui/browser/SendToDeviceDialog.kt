@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +35,7 @@ fun SendToDeviceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("傳送到裝置") },
+        title = { Text(stringResource(R.string.control_send_to_tv)) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -44,7 +46,7 @@ fun SendToDeviceDialog(
                     isScanning -> {
                         CircularProgressIndicator()
                         Text(
-                            "掃描附近接收端…",
+                            stringResource(R.string.send_scanning_receivers),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -52,7 +54,7 @@ fun SendToDeviceDialog(
 
                     devices.isEmpty() -> {
                         Text(
-                            "沒有找到裝置。\n請在另一台裝置的 OpenFX「裝置」頁按「我要接收」。",
+                            stringResource(R.string.send_no_receivers_phone),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -83,10 +85,10 @@ fun SendToDeviceDialog(
             TextButton(
                 enabled = !isScanning,
                 onClick = onRescan
-            ) { Text("重新掃描") }
+            ) { Text(stringResource(R.string.rescan)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

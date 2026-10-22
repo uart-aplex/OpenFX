@@ -1,5 +1,7 @@
 package com.openfx.mobile.ui.media
 
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
@@ -98,7 +100,7 @@ class VideoPlayerActivity : ComponentActivity() {
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = stringResource(R.string.back),
                         tint = Color.White
                     )
                 }

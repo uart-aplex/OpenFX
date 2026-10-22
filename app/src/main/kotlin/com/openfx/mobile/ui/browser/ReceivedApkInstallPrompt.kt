@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import com.openfx.mobile.R
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
@@ -30,6 +33,7 @@ private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
 @Composable
 fun ReceivedApkInstallPrompt(pendingPaths: List<String>, onHandled: (String) -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var apkToInstall by remember { mutableStateOf<FileItem?>(null) }
     var pendingPermissionFile by remember { mutableStateOf<File?>(null) }
     var installError by remember { mutableStateOf<String?>(null) }
@@ -43,7 +47,7 @@ fun ReceivedApkInstallPrompt(pendingPaths: List<String>, onHandled: (String) -> 
         if (file != null && canInstallUnknownApps(context)) {
             installError = launchApkInstaller(context, file)
         } else if (file != null) {
-            installError = "尚未允許 OpenFX 安裝未知來源的應用程式"
+            installError = resources.getString(R.string.install_unknown_not_allowed)
         }
     }
 
@@ -85,7 +89,7 @@ fun ReceivedApkInstallPrompt(pendingPaths: List<String>, onHandled: (String) -> 
                         )
                     }.onFailure {
                         pendingPermissionFile = null
-                        installError = "請到系統設定允許 OpenFX 安裝未知來源的應用程式"
+                        installError = resources.getString(R.string.install_unknown_go_settings)
                     }
                 }
             },
@@ -96,10 +100,10 @@ fun ReceivedApkInstallPrompt(pendingPaths: List<String>, onHandled: (String) -> 
     installError?.let { message ->
         AlertDialog(
             onDismissRequest = { installError = null },
-            title = { Text("無法安裝 APK") },
+            title = { Text(stringResource(R.string.apk_install_failed_title)) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = { installError = null }) { Text("確定") }
+                TextButton(onClick = { installError = null }) { Text(stringResource(R.string.ok)) }
             }
         )
     }
@@ -110,7 +114,7 @@ private fun canInstallUnknownApps(context: Context): Boolean =
         context.packageManager.canRequestPackageInstalls()
 
 private fun launchApkInstaller(context: Context, file: File): String? {
-    if (!file.isFile) return "接收到的 APK 檔案已不存在"
+    if (!file.isFile) return context.getString(R.string.apk_received_missing)
 
     return runCatching {
         val uri = FileProvider.getUriForFile(
@@ -135,5 +139,5 @@ private fun launchApkInstaller(context: Context, file: File): String? {
                 addFlags(commonFlags)
             })
         }
-    }.exceptionOrNull()?.let { it.message ?: "系統找不到 APK 安裝器" }
+    }.exceptionOrNull()?.let { it.message ?: context.getString(R.string.apk_no_installer) }
 }
