@@ -15,8 +15,8 @@ android {
         applicationId = "com.openfx.mobile"
         minSdk = Versions.minSdk
         targetSdk = Versions.targetSdk
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.3.0"
         testInstrumentationRunner = "com.openfx.mobile.apps.AppTransferInstrumentation"
     }
 
