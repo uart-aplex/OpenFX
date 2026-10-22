@@ -5,7 +5,7 @@ OpenFX 只用開源函式庫 (沒有 Google Play 服務、Firebase 或廣告 SDK
 
 ## 送審前檢查
 
-- [ ] repo 根目錄有 `LICENSE` 檔 (Apache-2.0 全文)。F-Droid 審核會要求
+- [x] repo 根目錄有 `LICENSE` 檔 (Apache-2.0 全文)
 - [ ] `app/build.gradle.kts` 的 `versionCode` / `versionName` 已更新，並建立對應的 tag (例如 `v0.3.0`)
 - [ ] `fastlane/metadata/android/*/changelogs/<versionCode>.txt` 已寫好這一版的更新內容
 - [ ] 本機能用 `./gradlew :app:assembleRelease` 建置成功 (不設簽章環境變數時產生未簽章 APK，F-Droid 會用自己的金鑰簽)

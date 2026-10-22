@@ -58,4 +58,4 @@ CI 會跑同樣的檢查，lint 必須維持 0 個 error。
 
 ## 授權
 
-送出的貢獻會以 Apache License 2.0 授權 (見 [README](README.md#-授權))。
+送出的貢獻會以 [Apache License 2.0](LICENSE) 授權。
