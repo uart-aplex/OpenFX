@@ -50,6 +50,7 @@ class AppTransferInstrumentation : Instrumentation() {
                 if (mode == "ui") showPicker()
                 else if (mode == "send") runBlocking { sendToPeer() }
                 else if (mode == "smb") detail = runBlocking { SmbSelfTest(targetContext, arguments).run() }
+                else if (mode == "kdf") detail = com.openfx.mobile.vault.VaultKdfBench.run()
                 else runBlocking { verifyTransfer() }
                 result.putString("stream", "PASS: ${mode ?: "export / transfer / stage"}\n$detail")
                 finish(-1, result)

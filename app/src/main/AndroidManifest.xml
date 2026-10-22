@@ -93,6 +93,13 @@
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
 
+        <!-- 加密保險箱 (FLAG_SECURE、離開後自動上鎖) -->
+        <activity
+            android:name=".ui.vault.VaultActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".ui.media.VideoPlayerActivity"
             android:exported="false"

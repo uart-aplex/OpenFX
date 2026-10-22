@@ -1,5 +1,7 @@
 package com.openfx.app.ui.tv.browser
 
+import com.openfx.mobile.ui.vault.VaultActivity
+import androidx.compose.material.icons.filled.Lock
 import com.openfx.mobile.ui.network.NetworkServersDialog
 import com.openfx.mobile.ui.browser.RemoteFetchBar
 import com.openfx.core.network.smb.SmbPath
@@ -77,6 +79,7 @@ fun TvFileBrowserScreen(
     viewModel: FileBrowserViewModel = hiltViewModel()
 ) {
     var showNetwork by remember { mutableStateOf(openNetworkOnStart) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var selectedFile by remember { mutableStateOf<FileItem?>(null) }
     var showSendDialog by remember { mutableStateOf(false) }
@@ -152,6 +155,20 @@ fun TvFileBrowserScreen(
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.tv_open_or_install))
+            }
+            Spacer(Modifier.width(12.dp))
+            Button(
+                enabled = selectedFile?.let { !SmbPath.isSmb(it.path) } == true,
+                onClick = {
+                    selectedFile?.let { file ->
+                        // TV 上預設保留原檔 (遙控器誤按比較難救回)，加密後可自行刪除
+                        context.startActivity(VaultActivity.importIntent(context, listOf(file.path), deleteOriginals = false))
+                    }
+                }
+            ) {
+                Icon(Icons.Default.Lock, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.vault_encrypt_action))
             }
             Spacer(Modifier.width(12.dp))
             Button(

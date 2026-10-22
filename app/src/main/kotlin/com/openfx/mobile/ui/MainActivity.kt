@@ -105,6 +105,9 @@ class MainActivity : ComponentActivity() {
                                             tvOpenNetwork = true
                                             tvRoute = TvRoute.FILES
                                         },
+                                        onOpenVault = {
+                                            startActivity(com.openfx.mobile.ui.vault.VaultActivity.intent(this@MainActivity))
+                                        },
                                     )
                                 }
 

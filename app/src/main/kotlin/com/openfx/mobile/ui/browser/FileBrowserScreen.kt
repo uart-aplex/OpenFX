@@ -1,5 +1,9 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.ui.platform.LocalResources
+import com.openfx.mobile.ui.vault.VaultActivity
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.ui.platform.LocalContext
 import com.openfx.mobile.ui.network.NetworkServersDialog
 import androidx.compose.material.icons.filled.Lan
 import com.openfx.core.network.smb.SmbPath
@@ -63,6 +67,10 @@ fun FileBrowserScreen(
     val bookmarks by viewModel.bookmarks.collectAsState()
     var showBookmarks by remember { mutableStateOf(false) }
     var showNetwork by remember { mutableStateOf(false) }
+    // 準備加密存入保險箱的本機路徑
+    var encryptCandidates by remember { mutableStateOf<List<String>>(emptyList()) }
+    val context = LocalContext.current
+    val resources = LocalResources.current
 
     // 返回鍵處理：多選模式 → 取消選擇，否則 → 回上一層
     // 到頂 (canNavigateUp=false) 時不攔截，讓系統正常處理返回 (不會卡死)
@@ -141,7 +149,8 @@ fun FileBrowserScreen(
                 volumes = uiState.storageVolumes,
                 currentPath = uiState.currentPath,
                 onNavigate = { viewModel.navigateTo(it) },
-                onNetwork = { showNetwork = true }
+                onNetwork = { showNetwork = true },
+                onVault = { context.startActivity(VaultActivity.intent(context)) }
             )
         }
 
@@ -215,6 +224,7 @@ fun FileBrowserScreen(
                     bookmarks = bookmarks,
                     onNavigate = { viewModel.navigateTo(it) },
                     onNetwork = { showNetwork = true },
+                    onVault = { context.startActivity(VaultActivity.intent(context)) },
                     modifier = Modifier.width(layoutInfo.sidebarWidth.dp)
                 )
 
@@ -298,6 +308,14 @@ fun FileBrowserScreen(
                 onDelete = { viewModel.showDeleteConfirm() },
                 onShare = { viewModel.shareSelected() },
                 onSend = { viewModel.openSendDialog() },
+                onEncrypt = {
+                    val local = uiState.selectedFiles.filterNot(SmbPath::isSmb)
+                    if (local.isEmpty()) {
+                        viewModel.showInfo(resources.getString(R.string.vault_encrypt_only_local))
+                    } else {
+                        encryptCandidates = local
+                    }
+                },
                 singleSelected = uiState.selectedFiles.size == 1
             )
         }
@@ -409,6 +427,18 @@ fun FileBrowserScreen(
             onRescan = { viewModel.scanSendDevices() },
             onSelect = { viewModel.sendSelectedTo(it) },
             onDismiss = { viewModel.closeSendDialog() }
+        )
+    }
+
+    if (encryptCandidates.isNotEmpty()) {
+        EncryptIntoVaultDialog(
+            count = encryptCandidates.size,
+            onConfirm = { deleteOriginals ->
+                context.startActivity(VaultActivity.importIntent(context, encryptCandidates, deleteOriginals))
+                encryptCandidates = emptyList()
+                viewModel.clearSelection()
+            },
+            onDismiss = { encryptCandidates = emptyList() }
         )
     }
 
@@ -548,7 +578,8 @@ fun CategoryChipRow(
     volumes: List<StorageVolume>,
     currentPath: String,
     onNavigate: (String) -> Unit,
-    onNetwork: () -> Unit = {}
+    onNetwork: () -> Unit = {},
+    onVault: () -> Unit = {}
 ) {
     val selectedShortcut = locationShortcuts.firstOrNull { (_, _, path) ->
         currentPath == path || currentPath.startsWith("$path/")
@@ -599,6 +630,18 @@ fun CategoryChipRow(
                 label = { Text(stringResource(R.string.network_chip), fontSize = 12.sp) },
                 leadingIcon = {
                     Icon(Icons.Default.Lan, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+            )
+        }
+
+        // 加密保險箱
+        item {
+            FilterChip(
+                selected = false,
+                onClick = onVault,
+                label = { Text(stringResource(R.string.vault_entry), fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
             )
         }
@@ -865,6 +908,7 @@ fun ActionBar(
     onDelete: () -> Unit,
     onShare: () -> Unit,
     onSend: () -> Unit,
+    onEncrypt: () -> Unit,
     singleSelected: Boolean
 ) {
     Surface(
@@ -884,6 +928,7 @@ fun ActionBar(
                 ActionButton(Icons.Default.Edit, stringResource(R.string.action_rename), onRename)
             }
             ActionButton(Icons.Default.Send, stringResource(R.string.send), onSend)
+            ActionButton(Icons.Default.Lock, stringResource(R.string.vault_encrypt_action), onEncrypt)
             ActionButton(Icons.Default.Delete, stringResource(R.string.delete), onDelete)
             ActionButton(Icons.Default.Share, stringResource(R.string.action_share), onShare)
         }
@@ -1070,6 +1115,7 @@ fun FileSidebar(
     bookmarks: Set<String>,
     onNavigate: (String) -> Unit,
     onNetwork: () -> Unit = {},
+    onVault: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // LazyColumn 的 builder 不是 composable，預設磁區名稱先在外面取好
@@ -1135,6 +1181,14 @@ fun FileSidebar(
                 label = stringResource(R.string.network_title),
                 isSelected = SmbPath.isSmb(currentPath),
                 onClick = onNetwork
+            )
+        }
+        item {
+            SidebarNavItem(
+                icon = Icons.Default.Lock,
+                label = stringResource(R.string.vault_entry),
+                isSelected = false,
+                onClick = onVault
             )
         }
 
@@ -1346,4 +1400,31 @@ fun RemoteFetchBar(fetch: RemoteFetch?) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
     }
+}
+
+/** 確認把選取項目加密存入保險箱；可選擇加密後刪除原檔 */
+@Composable
+private fun EncryptIntoVaultDialog(count: Int, onConfirm: (deleteOriginals: Boolean) -> Unit, onDismiss: () -> Unit) {
+    var deleteOriginals by remember { mutableStateOf(true) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Lock, contentDescription = null) },
+        title = { Text(stringResource(R.string.vault_move_in_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(pluralStringResource(R.plurals.vault_move_in_message, count, count))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { deleteOriginals = !deleteOriginals }
+                ) {
+                    androidx.compose.material3.Checkbox(checked = deleteOriginals, onCheckedChange = { deleteOriginals = it })
+                    Text(stringResource(R.string.vault_delete_originals))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(deleteOriginals) }) { Text(stringResource(R.string.vault_encrypt_action)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
+    )
 }

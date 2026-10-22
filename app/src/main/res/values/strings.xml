@@ -417,6 +417,16 @@
     <string name="tv_pick_audio">選擇音訊檔案</string>
     <string name="tv_install_apk">安裝 APK</string>
     <string name="tv_install_apk_desc">從 Download/OpenFX 開啟</string>
+    <string name="vault_backup">備份保險箱 (加密)</string>
+    <string name="vault_restore">從備份還原</string>
+    <string name="vault_backup_done">已建立加密備份：%1$s</string>
+    <string name="vault_restore_done">已還原保險箱，請用備份時的密碼解鎖</string>
+    <string name="vault_restore_confirm">還原會取代目前保險箱的所有內容，確定要繼續嗎？</string>
+    <string name="vault_restore_none">在 Download/OpenFX 找不到 .ofxvault 備份檔</string>
+    <string name="vault_backing_up">正在備份…</string>
+    <string name="vault_restoring">正在還原…</string>
+    <string name="vault_encrypt_only_local">只有本機檔案可以存入保險箱</string>
+    <string name="vault_tv_add_hint">在 TV 上請到「檔案」選取檔案後按「加密」存入保險箱。</string>
     <string name="smb_error_not_configured">找不到這台伺服器的設定，請重新加入</string>
     <string name="smb_error_auth">登入失敗：帳號或密碼錯誤</string>
     <string name="smb_error_access">沒有權限或共享不存在：%1$s</string>
@@ -452,5 +462,50 @@
         <item quantity="other">連線成功，找到 %1$d 個共享</item>
     </plurals>
     <string name="network_chip">網路</string>
+    <string name="vault_title">加密保險箱</string>
+    <string name="vault_setup_intro">保險箱內的檔案、檔名與資料夾結構都以 AES-256 加密，只有輸入密碼才能開啟。適合存放證件影本、合約等重要文件。</string>
+    <string name="vault_setup_warning">忘記密碼將無法復原任何檔案。解除安裝 OpenFX 也會刪除保險箱，請定期匯出重要文件備份。</string>
+    <string name="vault_new_password">新密碼</string>
+    <string name="vault_confirm_password">再輸入一次密碼</string>
+    <string name="vault_current_password">目前密碼</string>
+    <string name="vault_password">密碼</string>
+    <string name="vault_create">建立保險箱</string>
+    <string name="vault_unlock">解鎖</string>
+    <string name="vault_unlocking">正在驗證密碼…</string>
+    <string name="vault_lock">上鎖</string>
+    <string name="vault_password_too_short">密碼至少需要 %1$d 個字元</string>
+    <string name="vault_password_mismatch">兩次輸入的密碼不一致</string>
+    <string name="vault_wrong_password">密碼錯誤</string>
+    <string name="vault_corrupted">加密資料已損壞或被修改</string>
+    <string name="vault_add">加入</string>
+    <string name="vault_add_files">加入檔案</string>
+    <string name="vault_take_photo">拍照存入</string>
+    <string name="vault_export">解密匯出</string>
+    <string name="vault_exported">已解密匯出到 %1$s</string>
+    <string name="vault_empty">保險箱是空的。\n按右上角「+」加入檔案或拍照。</string>
+    <string name="vault_delete_message">確定要永久刪除「%1$s」嗎？此操作無法復原。</string>
+    <string name="vault_change_password">變更密碼</string>
+    <string name="vault_encrypting">正在加密…</string>
+    <string name="vault_decrypting">正在解密…</string>
+    <string name="vault_working">處理中…</string>
+    <plurals name="vault_imported">
+        <item quantity="other">已加密存入 %1$d 個項目</item>
+    </plurals>
+    <plurals name="vault_imported_moved">
+        <item quantity="other">已加密存入 %1$d 個項目並刪除原檔</item>
+    </plurals>
+    <string name="vault_biometric_enable">啟用指紋解鎖</string>
+    <string name="vault_biometric_disable">停用指紋解鎖</string>
+    <string name="vault_biometric_enabled">已啟用指紋解鎖</string>
+    <string name="vault_biometric_prompt">解鎖加密保險箱</string>
+    <string name="vault_biometric_invalidated">指紋設定已變更，請用密碼解鎖後重新啟用指紋解鎖</string>
+    <string name="vault_entry">保險箱</string>
+    <string name="vault_entry_desc">加密存放重要文件</string>
+    <string name="vault_encrypt_action">加密</string>
+    <string name="vault_move_in_title">加密存入保險箱</string>
+    <plurals name="vault_move_in_message">
+        <item quantity="other">要把選取的 %1$d 個項目加密存入保險箱嗎？</item>
+    </plurals>
+    <string name="vault_delete_originals">加密後刪除原始檔案 (建議)</string>
     <!-- /i18n:auto -->
 </resources>

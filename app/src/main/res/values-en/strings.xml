@@ -409,6 +409,16 @@ Run this adb command from a computer, then reopen OpenFX:
     <string name="tv_pick_audio">Choose an audio file</string>
     <string name="tv_install_apk">Install APK</string>
     <string name="tv_install_apk_desc">Open from Download/OpenFX</string>
+    <string name="vault_backup">Back up vault (encrypted)</string>
+    <string name="vault_restore">Restore from backup</string>
+    <string name="vault_backup_done">Encrypted backup saved: %1$s</string>
+    <string name="vault_restore_done">Vault restored. Unlock it with the password used when the backup was made.</string>
+    <string name="vault_restore_confirm">Restoring replaces everything in the current vault. Continue?</string>
+    <string name="vault_restore_none">No .ofxvault backup found in Download/OpenFX</string>
+    <string name="vault_backing_up">Backing up…</string>
+    <string name="vault_restoring">Restoring…</string>
+    <string name="vault_encrypt_only_local">Only files on this device can be added to the vault</string>
+    <string name="vault_tv_add_hint">On TV, open Files, select a file and press \"Encrypt\" to add it to the vault.</string>
     <string name="smb_error_not_configured">This server is not saved anymore. Please add it again.</string>
     <string name="smb_error_auth">Login failed: wrong user name or password</string>
     <string name="smb_error_access">Access denied or share not found: %1$s</string>
@@ -445,5 +455,53 @@ Run this adb command from a computer, then reopen OpenFX:
         <item quantity="other">Connected, %1$d shares found</item>
     </plurals>
     <string name="network_chip">Network</string>
+    <string name="vault_title">Encrypted vault</string>
+    <string name="vault_setup_intro">Files, names and folders in the vault are encrypted with AES-256 and can only be opened with your password. Use it for ID copies, contracts and other important documents.</string>
+    <string name="vault_setup_warning">If you forget the password, nothing can be recovered. Uninstalling OpenFX also deletes the vault, so export backups of important files regularly.</string>
+    <string name="vault_new_password">New password</string>
+    <string name="vault_confirm_password">Confirm password</string>
+    <string name="vault_current_password">Current password</string>
+    <string name="vault_password">Password</string>
+    <string name="vault_create">Create vault</string>
+    <string name="vault_unlock">Unlock</string>
+    <string name="vault_unlocking">Checking password…</string>
+    <string name="vault_lock">Lock</string>
+    <string name="vault_password_too_short">The password needs at least %1$d characters</string>
+    <string name="vault_password_mismatch">The passwords do not match</string>
+    <string name="vault_wrong_password">Wrong password</string>
+    <string name="vault_corrupted">The encrypted data is damaged or was modified</string>
+    <string name="vault_add">Add</string>
+    <string name="vault_add_files">Add files</string>
+    <string name="vault_take_photo">Take a photo</string>
+    <string name="vault_export">Decrypt and export</string>
+    <string name="vault_exported">Decrypted to %1$s</string>
+    <string name="vault_empty">The vault is empty.\nTap \"+\" to add files or take a photo.</string>
+    <string name="vault_delete_message">Permanently delete \"%1$s\"? This cannot be undone.</string>
+    <string name="vault_change_password">Change password</string>
+    <string name="vault_encrypting">Encrypting…</string>
+    <string name="vault_decrypting">Decrypting…</string>
+    <string name="vault_working">Working…</string>
+    <plurals name="vault_imported">
+        <item quantity="one">Encrypted %1$d item</item>
+        <item quantity="other">Encrypted %1$d items</item>
+    </plurals>
+    <plurals name="vault_imported_moved">
+        <item quantity="one">Encrypted %1$d item and deleted the original</item>
+        <item quantity="other">Encrypted %1$d items and deleted the originals</item>
+    </plurals>
+    <string name="vault_biometric_enable">Enable fingerprint unlock</string>
+    <string name="vault_biometric_disable">Disable fingerprint unlock</string>
+    <string name="vault_biometric_enabled">Fingerprint unlock enabled</string>
+    <string name="vault_biometric_prompt">Unlock the encrypted vault</string>
+    <string name="vault_biometric_invalidated">Your fingerprints changed. Unlock with the password and enable fingerprint unlock again.</string>
+    <string name="vault_entry">Vault</string>
+    <string name="vault_entry_desc">Encrypted important documents</string>
+    <string name="vault_encrypt_action">Encrypt</string>
+    <string name="vault_move_in_title">Encrypt into vault</string>
+    <plurals name="vault_move_in_message">
+        <item quantity="one">Encrypt the %1$d selected item into the vault?</item>
+        <item quantity="other">Encrypt the %1$d selected items into the vault?</item>
+    </plurals>
+    <string name="vault_delete_originals">Delete the originals after encrypting (recommended)</string>
     <!-- /i18n:auto -->
 </resources>

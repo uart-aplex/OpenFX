@@ -22,6 +22,7 @@ object Versions {
     const val media3 = "1.5.1"
     const val leanback = "1.0.0"
     const val activity = "1.9.3"
+    const val biometric = "1.1.0"
 
     // DI
     const val hilt = "2.57"
@@ -56,6 +57,7 @@ object Deps {
     // AndroidX Core
     const val coreKtx = "androidx.core:core-ktx:${Versions.coreKtx}"
     const val activityCompose = "androidx.activity:activity-compose:${Versions.activity}"
+    const val biometric = "androidx.biometric:biometric:${Versions.biometric}"
 
     // Compose
     const val composeBom = "androidx.compose:compose-bom:${Versions.composeBom}"
