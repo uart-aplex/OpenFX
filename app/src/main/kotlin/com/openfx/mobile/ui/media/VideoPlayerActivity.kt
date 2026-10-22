@@ -45,6 +45,10 @@ import java.io.File
 @AndroidEntryPoint
 class VideoPlayerActivity : ComponentActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.openfx.common.util.AppLocale.wrap(newBase))
+    }
+
     /** 本機檔案與 smb:// 串流共用的資料來源 */
     @Inject
     lateinit var dataSourceFactory: OpenFxDataSourceFactory

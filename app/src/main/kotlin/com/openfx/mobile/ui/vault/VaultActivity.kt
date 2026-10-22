@@ -26,6 +26,10 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class VaultActivity : FragmentActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.openfx.common.util.AppLocale.wrap(newBase))
+    }
+
     @Inject
     lateinit var manager: VaultManager
 

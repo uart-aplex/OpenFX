@@ -517,4 +517,7 @@
     <string name="vault_delete_originals">加密後刪除原始檔案 (建議)</string>
     <!-- /i18n:auto -->
     <string name="tv_usb_none">未偵測到 USB 隨身碟或 SD 卡，請插入後再試</string>
+    <string name="settings_language">語言</string>
+    <string name="settings_language_system">跟隨系統</string>
+    <string name="settings_language_desc">切換 App 顯示語言</string>
 </resources>

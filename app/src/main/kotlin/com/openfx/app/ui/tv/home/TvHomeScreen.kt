@@ -37,6 +37,8 @@ fun TvHomeScreen(
     onOpenUsb: () -> Unit = {},
 ) {
     val receiveFocusRequester = remember { FocusRequester() }
+    var showLanguage by remember { mutableStateOf(false) }
+    if (showLanguage) com.openfx.common.ui.LanguageDialog(onDismiss = { showLanguage = false })
 
     LaunchedEffect(Unit) {
         receiveFocusRequester.requestFocus()
@@ -73,6 +75,7 @@ fun TvHomeScreen(
                                 item.opensNetwork -> onNavigateToNetwork()
                                 item.opensVault -> onOpenVault()
                                 item.opensUsb -> onOpenUsb()
+                                item.opensLanguage -> showLanguage = true
                             }
                         }
                     )
@@ -176,7 +179,8 @@ private data class QuickAccessItem(
     val opensFiles: Boolean = false,
     val opensNetwork: Boolean = false,
     val opensVault: Boolean = false,
-    val opensUsb: Boolean = false
+    val opensUsb: Boolean = false,
+    val opensLanguage: Boolean = false
 )
 private val quickAccessItems = listOf(
     QuickAccessItem(Icons.Default.PhoneAndroid, R.string.tv_phone_to_tv, R.string.tv_open_receive_mode, isReceive = true),
@@ -185,6 +189,7 @@ private val quickAccessItems = listOf(
     QuickAccessItem(Icons.Default.Lan, R.string.tv_local_network, R.string.tv_browse_network, opensNetwork = true),
     QuickAccessItem(Icons.Default.Lock, R.string.vault_entry, R.string.vault_entry_desc, opensVault = true),
     QuickAccessItem(Icons.Default.Download, R.string.shortcut_downloads, R.string.tv_view_downloads),
+    QuickAccessItem(Icons.Default.Language, R.string.settings_language, R.string.settings_language_desc, opensLanguage = true),
 )
 private data class FileManagerItem(
     @StringRes val nameRes: Int,

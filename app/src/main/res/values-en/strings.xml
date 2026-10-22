@@ -513,4 +513,7 @@ Run this adb command from a computer, then reopen OpenFX:
     <string name="vault_delete_originals">Delete the originals after encrypting (recommended)</string>
     <!-- /i18n:auto -->
     <string name="tv_usb_none">No USB drive or SD card detected. Plug one in and try again.</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_language_desc">Change the app display language</string>
 </resources>

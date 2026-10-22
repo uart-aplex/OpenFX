@@ -1,5 +1,8 @@
 package com.openfx.mobile.ui.settings
 
+import androidx.compose.material.icons.filled.Language
+import com.openfx.common.ui.LanguageDialog
+import com.openfx.common.ui.languageLabel
 import androidx.compose.ui.res.stringResource
 import com.openfx.mobile.R
 import androidx.compose.foundation.clickable
@@ -56,6 +59,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     var showViewModeDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showDeviceNameDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     LazyColumn {
         // ===== 檔案管理 =====
@@ -84,6 +88,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     stringResource(if (sortAscending) R.string.sort_ascending else R.string.sort_descending)
                 )
             ) { showSortDialog = true }
+        }
+
+        item {
+            NavigationSetting(
+                Icons.Default.Language,
+                stringResource(R.string.settings_language),
+                languageLabel()
+            ) { showLanguageDialog = true }
         }
 
         // ===== 裝置連線 =====
@@ -122,6 +134,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
         item { Spacer(Modifier.height(32.dp)) }
     }
+
+    if (showLanguageDialog) LanguageDialog(onDismiss = { showLanguageDialog = false })
 
     // ===== 預設檢視模式選擇 =====
     if (showViewModeDialog) {

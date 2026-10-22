@@ -28,6 +28,10 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 class AppPackageInstallerActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.openfx.common.util.AppLocale.wrap(newBase))
+    }
     private var message by mutableStateOf("")
     private var busy by mutableStateOf(true)
     private var sessionId = -1

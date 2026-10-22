@@ -52,6 +52,10 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(com.openfx.common.util.AppLocale.wrap(newBase))
+    }
+
     @Inject
     lateinit var platformDetector: PlatformDetector
 
