@@ -83,6 +83,9 @@ object LanDeviceScanner {
         return found.toList().sortedBy { it.ip }
     }
 
+    /** 探測單一 IP 是否為 OpenFX 接收端 (阻塞呼叫，請在 IO thread) */
+    fun probe(ip: String, port: Int = 8989, timeoutMs: Int = 2000): OpenFxDevice? = probeDevice(ip, port, timeoutMs)
+
     private fun probeDevice(
         ip: String,
         port: Int,

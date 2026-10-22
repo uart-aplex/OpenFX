@@ -1,5 +1,11 @@
 package com.openfx.mobile.ui.browser
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Row
+import com.openfx.mobile.ui.transfer.ManualDeviceDialog
 import androidx.compose.ui.res.stringResource
 import com.openfx.mobile.R
 import androidx.compose.foundation.layout.Arrangement
@@ -31,8 +37,21 @@ fun SendToDeviceDialog(
     isScanning: Boolean,
     onRescan: () -> Unit,
     onSelect: (OpenFxDevice) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onAddManual: ((ip: String, port: Int, onResult: (OpenFxDevice?) -> Unit) -> Unit)? = null
 ) {
+    var showManual by remember { mutableStateOf(false) }
+    if (showManual && onAddManual != null) {
+        ManualDeviceDialog(
+            add = onAddManual,
+            onAdded = { device ->
+                showManual = false
+                onSelect(device)
+            },
+            onDismiss = { showManual = false }
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.control_send_to_tv)) },
@@ -82,10 +101,15 @@ fun SendToDeviceDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                enabled = !isScanning,
-                onClick = onRescan
-            ) { Text(stringResource(R.string.rescan)) }
+            Row {
+                if (onAddManual != null) {
+                    TextButton(onClick = { showManual = true }) { Text(stringResource(R.string.manual_device_add)) }
+                }
+                TextButton(
+                    enabled = !isScanning,
+                    onClick = onRescan
+                ) { Text(stringResource(R.string.rescan)) }
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }

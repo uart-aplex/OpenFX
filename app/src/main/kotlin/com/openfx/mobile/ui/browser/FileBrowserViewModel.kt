@@ -645,6 +645,14 @@ class FileBrowserViewModel @Inject constructor(
         _uiState.update { it.copy(showSendDialog = false) }
     }
 
+    fun addManualSendDevice(ip: String, port: Int, onResult: (OpenFxDevice?) -> Unit) {
+        viewModelScope.launch {
+            val device = transferManager.addManualDevice(ip, port)
+            if (device != null) _sendDevices.value = listOf(device) + _sendDevices.value.filterNot { it.ip == device.ip }
+            onResult(device)
+        }
+    }
+
     fun scanSendDevices() {
         if (_isScanningSendDevices.value) return
         _isScanningSendDevices.value = true

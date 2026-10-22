@@ -87,6 +87,7 @@ fun DeviceScreen(
     var selectedDevice by remember { mutableStateOf<OpenFxDevice?>(null) }
     var pendingSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
     var appSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
+    var showManual by remember { mutableStateOf(false) }
     val resources = LocalResources.current
 
     val sendPicker = rememberLauncherForActivityResult(
@@ -154,6 +155,10 @@ fun DeviceScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp)
         )
+        androidx.compose.material3.TextButton(
+            onClick = { showManual = true },
+            modifier = Modifier.padding(horizontal = 4.dp)
+        ) { Text(stringResource(R.string.manual_device_add)) }
 
         // ===== 接收狀態卡片 =====
         if (isReceiving) {
@@ -291,6 +296,17 @@ fun DeviceScreen(
                 )
             }
         }
+    }
+
+    if (showManual) {
+        ManualDeviceDialog(
+            add = viewModel::addManualDevice,
+            onAdded = { device ->
+                showManual = false
+                selectedDevice = device
+            },
+            onDismiss = { showManual = false }
+        )
     }
 
     appSendTarget?.let { device ->

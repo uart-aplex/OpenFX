@@ -309,6 +309,14 @@ Run this adb command from a computer, then reopen OpenFX:
         <item quantity="one">Added %1$d send task, see the Transfers tab for progress</item>
         <item quantity="other">Added %1$d send tasks, see the Transfers tab for progress</item>
     </plurals>
+    <string name="manual_device_add">Enter IP manually</string>
+    <string name="manual_device_title">Add device by IP</string>
+    <string name="manual_device_message">Enter the IP shown on the other device\'s receive screen (e.g. 192.168.0.127). Use this when your router blocks automatic discovery.</string>
+    <string name="manual_device_ip">IP address</string>
+    <string name="manual_device_checking">Connecting…</string>
+    <string name="manual_device_not_found">No OpenFX receiver at %1$s. Make sure the other device is in receive mode.</string>
+    <string name="manual_device_invalid">Invalid IP address</string>
+    <string name="add">Add</string>
     <string name="settings_device_name_desc">Other OpenFX devices see this name when scanning</string>
     <string name="settings_transfer_notify_detail">Show file info in the notification when a receive finishes</string>
     <string name="sort_ascending">Ascending</string>

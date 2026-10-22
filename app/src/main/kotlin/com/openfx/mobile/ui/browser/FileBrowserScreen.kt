@@ -426,7 +426,8 @@ fun FileBrowserScreen(
             isScanning = isScanningSendDevices,
             onRescan = { viewModel.scanSendDevices() },
             onSelect = { viewModel.sendSelectedTo(it) },
-            onDismiss = { viewModel.closeSendDialog() }
+            onDismiss = { viewModel.closeSendDialog() },
+            onAddManual = viewModel::addManualSendDevice
         )
     }
 

@@ -298,6 +298,14 @@
     <plurals name="send_tasks_added">
         <item quantity="other">已加入 %1$d 个发送任务，到“传文件”页查看进度</item>
     </plurals>
+    <string name="manual_device_add">手动输入 IP</string>
+    <string name="manual_device_title">以 IP 加入设备</string>
+    <string name="manual_device_message">请输入对方接收界面上显示的 IP (例如 192.168.0.127)。路由器挡住自动搜索时可用这个方式连接。</string>
+    <string name="manual_device_ip">IP 地址</string>
+    <string name="manual_device_checking">正在连接…</string>
+    <string name="manual_device_not_found">在 %1$s 找不到 OpenFX 接收端，请确认对方已开启接收模式</string>
+    <string name="manual_device_invalid">IP 格式不正确</string>
+    <string name="add">加入</string>
     <string name="settings_device_name_desc">其他 OpenFX 设备扫描时会看到这个名称</string>
     <string name="settings_transfer_notify_detail">接收完成时在通知中显示文件信息</string>
     <string name="sort_ascending">升序</string>

@@ -38,6 +38,7 @@ class SettingsRepository @Inject constructor(
         val TRANSFER_NOTIFY = booleanPreferencesKey("transfer_complete_notify")
         val DEVICE_ID = stringPreferencesKey("device_id")
         val RECEIVE_PIN = stringPreferencesKey("receive_pin")
+        val MANUAL_DEVICES = stringPreferencesKey("manual_devices")
     }
 
     /** 未設定時的預設裝置名稱 (廠牌 + 型號) */
@@ -94,6 +95,21 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setTransferCompleteNotify(value: Boolean) {
         context.settingsDataStore.edit { it[Keys.TRANSFER_NOTIFY] = value }
+    }
+
+    // ===== 手動加入的裝置 =====
+
+    /** 使用者以 IP 手動加入的接收端 ("ip:port")，掃描時一併探測 */
+    val manualDevices: Flow<List<String>> = context.settingsDataStore.data.map { prefs ->
+        prefs[Keys.MANUAL_DEVICES].orEmpty().split(',').filter { it.isNotBlank() }
+    }
+
+    suspend fun addManualDevice(address: String) {
+        context.settingsDataStore.edit { prefs ->
+            val list = prefs[Keys.MANUAL_DEVICES].orEmpty().split(',').filter { it.isNotBlank() }
+            // 最近加入的排前面，最多記 8 台
+            prefs[Keys.MANUAL_DEVICES] = (listOf(address) + list.filterNot { it == address }).take(8).joinToString(",")
+        }
     }
 
     // ===== 傳檔配對 =====

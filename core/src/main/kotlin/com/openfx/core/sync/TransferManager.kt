@@ -1,5 +1,9 @@
 package com.openfx.core.sync
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.first
+import com.openfx.core.sync.http.LanDeviceScanner
 import com.openfx.core.settings.SettingsRepository
 import com.openfx.core.sync.http.OpenFxDevice
 import com.openfx.core.sync.http.OpenFxHttpReceiver
@@ -460,8 +464,28 @@ class TransferManager @Inject constructor(
     /** UDP 廣播掃描，最多等 timeoutMs；阻塞時間內在 IO dispatcher 執行 */
     suspend fun discoverDevices(timeoutMs: Int = 2000): List<OpenFxDevice> =
         withContext(Dispatchers.IO) {
-            UdpDiscovery.scan(timeoutMs)
+            val found = UdpDiscovery.scan(timeoutMs)
+            // 路由器擋廣播時，UDP 找不到手動加入的裝置 → 直接探測它們
+            val manual = settings.manualDevices.first()
+                .mapNotNull(::parseAddress)
+                .filter { (ip, _) -> found.none { it.ip == ip } }
+                .map { (ip, port) -> async { LanDeviceScanner.probe(ip, port, 1500) } }
+                .awaitAll()
+                .filterNotNull()
+            found + manual
         }
+
+    /** 以 IP 手動加入接收端；找不到回傳 null */
+    suspend fun addManualDevice(ip: String, port: Int = OpenFxHttpSender.DEFAULT_PORT): OpenFxDevice? =
+        withContext(Dispatchers.IO) {
+            LanDeviceScanner.probe(ip, port)?.also { settings.addManualDevice("$ip:$port") }
+        }
+
+    private fun parseAddress(address: String): Pair<String, Int>? {
+        val ip = address.substringBefore(':').takeIf { it.isNotBlank() } ?: return null
+        val port = address.substringAfter(':', "").toIntOrNull() ?: OpenFxHttpSender.DEFAULT_PORT
+        return ip to port
+    }
 
     // ===== Private =====
 

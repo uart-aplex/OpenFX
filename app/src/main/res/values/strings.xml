@@ -324,6 +324,14 @@
     <plurals name="send_tasks_added">
         <item quantity="other">已加入 %1$d 個傳送任務，到「傳檔」頁查看進度</item>
     </plurals>
+    <string name="manual_device_add">手動輸入 IP</string>
+    <string name="manual_device_title">以 IP 加入裝置</string>
+    <string name="manual_device_message">請輸入對方接收畫面上顯示的 IP (例如 192.168.0.127)。路由器擋住自動搜尋時可用這個方式連線。</string>
+    <string name="manual_device_ip">IP 位址</string>
+    <string name="manual_device_checking">正在連線…</string>
+    <string name="manual_device_not_found">在 %1$s 找不到 OpenFX 接收端，請確認對方已開啟接收模式</string>
+    <string name="manual_device_invalid">IP 格式不正確</string>
+    <string name="add">加入</string>
     <string name="settings_device_name_desc">其他 OpenFX 裝置掃描時會看到這個名稱</string>
     <string name="settings_transfer_notify_detail">接收完成時在通知顯示檔案資訊</string>
     <string name="sort_ascending">升序</string>

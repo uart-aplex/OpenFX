@@ -83,6 +83,7 @@ fun TvDevicesScreen(
     val preparingApps by viewModel.preparingApps.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
     var appSendTarget by remember { mutableStateOf<OpenFxDevice?>(null) }
+    var showManual by remember { mutableStateOf(false) }
     val receiveButtonFocusRequester = remember { FocusRequester() }
     val receivingTask = activeTasks.firstOrNull {
         it.direction == TransferDirection.RECEIVE && it.status == TransferStatus.ACTIVE
@@ -147,6 +148,10 @@ fun TvDevicesScreen(
                 Icon(Icons.Default.Folder, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.tv_view_received))
+            }
+            Spacer(Modifier.width(12.dp))
+            Button(onClick = { showManual = true }) {
+                Text(stringResource(R.string.manual_device_add))
             }
             Spacer(Modifier.width(12.dp))
             Button(onClick = { viewModel.scan() }, enabled = !isScanning) {
@@ -279,6 +284,14 @@ fun TvDevicesScreen(
                     }
                 }
         }
+    }
+
+    if (showManual) {
+        com.openfx.mobile.ui.transfer.ManualDeviceDialog(
+            add = viewModel::addManualDevice,
+            onAdded = { showManual = false },
+            onDismiss = { showManual = false }
+        )
     }
 
     appSendTarget?.let { device ->

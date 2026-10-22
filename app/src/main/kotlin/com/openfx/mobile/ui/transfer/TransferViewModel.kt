@@ -129,6 +129,15 @@ class TransferViewModel @Inject constructor(
         }
     }
 
+    /** 以 IP 手動加入；成功時同時放進目前的裝置清單 */
+    fun addManualDevice(ip: String, port: Int, onResult: (OpenFxDevice?) -> Unit) {
+        viewModelScope.launch {
+            val device = transferManager.addManualDevice(ip, port)
+            if (device != null) _devices.value = listOf(device) + _devices.value.filterNot { it.ip == device.ip }
+            onResult(device)
+        }
+    }
+
     // ===== 傳送 =====
 
     fun sendInstalledApps(packageNames: List<String>, device: OpenFxDevice, onQueued: () -> Unit) {
