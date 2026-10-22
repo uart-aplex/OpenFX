@@ -1,0 +1,4 @@
+# gradlew 必須是 LF，否則 Linux (CI) 無法執行；.bat 保持 CRLF
+/gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
