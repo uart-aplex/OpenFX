@@ -35,3 +35,11 @@
 -dontwarn org.slf4j.**
 -dontwarn javax.el.**
 -dontwarn org.ietf.jgss.**
+
+# smbj 的事件匯流排 (mbassador) 以反射建立 handler，需要保留類別、建構子與 @Handler 註解
+-keep class net.engio.mbassy.** { *; }
+-dontwarn net.engio.mbassy.**
+-keepclassmembers class * {
+    @net.engio.mbassy.listener.Handler <methods>;
+}
+-keepattributes Signature, RuntimeVisibleAnnotations, AnnotationDefault

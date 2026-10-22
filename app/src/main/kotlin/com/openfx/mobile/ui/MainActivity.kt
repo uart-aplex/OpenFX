@@ -105,9 +105,11 @@ class MainActivity : ComponentActivity() {
 //            )
         //}
 
-        requestStoragePermission()
+        // 用相機掃 QR Code 開啟時只做配對，不要先把人帶去權限設定頁
+        val openedForPairing = savedInstanceState == null && intent?.action == Intent.ACTION_VIEW
+        if (!openedForPairing) requestStoragePermission()
         requestNotificationPermission()
-        if (savedInstanceState == null) handlePairingLink(intent)
+        if (openedForPairing) handlePairingLink(intent)
 //        window.statusBarColor = android.graphics.Color.TRANSPARENT
         setContent {
             when (platformDetector.platform) {

@@ -20,8 +20,23 @@ android {
         testInstrumentationRunner = "com.openfx.mobile.apps.AppTransferInstrumentation"
     }
 
+    // Release 簽章：CI 從 GitHub Secrets 還原 keystore 並設定這四個環境變數；
+    // 本機沒設時 release 不簽章 (F-Droid 會用自己的金鑰簽)
+    val releaseKeystore = System.getenv("OPENFX_KEYSTORE")?.let(::file)?.takeIf { it.isFile }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("OPENFX_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("OPENFX_KEY_ALIAS")
+                keyPassword = System.getenv("OPENFX_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseKeystore != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
