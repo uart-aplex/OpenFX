@@ -45,6 +45,12 @@ android {
     androidResources {
         generateLocaleConfig = true
     }
+    // App 內可切換語言，AAB 不能依裝置語言拆掉其他語系的資源
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 dependencies {

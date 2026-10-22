@@ -126,24 +126,17 @@ Check if target exists, append `_copy` + counter before extension.
 
 ---
 
-## P2P Protocol (future reference)
+## Transfer Protocol
 
 ### Device Discovery
-- Wi-Fi Direct via WifiP2pManager
-- BroadcastReceiver for PEERS_CHANGED, CONNECTION_CHANGED
-- Pairing via QR Code payload or 4-digit PIN
+- UDP broadcast on port 18930 (`OPENFX|<name>|<port>|<deviceId>`)
+- Manual IP entry for networks that block broadcast (AP isolation, mesh); saved devices are probed on every scan
+- Wi-Fi Direct was dropped: it needs location / nearby-devices permissions and most TV boxes ship without P2P support
 
-### File Transfer Protocol (TCP port 18921)
-```
-Header (variable length):
-  - magic: "OPENFX" (6 bytes)
-  - version: int (4 bytes)
-  - filename length: int (4 bytes)
-  - filename: UTF-8 bytes
-  - file size: long (8 bytes)
-Data:
-  - 8KB chunks until file size reached
-```
+### File Transfer (HTTP port 8989)
+- `GET /ping` → JSON `{app, deviceName, deviceId}`
+- `POST /auth`, `POST /upload` with `X-OpenFX-Pin` header (6-digit receive PIN shown on the receiver)
+- 5 wrong PINs from one IP → 60 s lockout; at most 8 concurrent connections; free space checked before writing
 
 ### Remote Control (TCP port 18920)
 - JSON-serialized RemoteCommand → RemoteResponse

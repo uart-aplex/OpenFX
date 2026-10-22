@@ -134,7 +134,6 @@ OpenFX/
 - **Notification channels** — for transfer progress notifications
 - **File sharing intent** — handling ACTION_SEND from other apps
 - **QR code generation** — currently placeholder in pairing UI (needs ZXing)
-- **P2P actual connection** — UI exists, but Wi-Fi Direct pairing not tested end-to-end
 - **TV file browser** — D-pad navigable file browsing UI for TV
 - **MediaStore scanning** — browse all images/videos across all directories (not just DCIM)
 - **Bookmark system** — save favorite folders

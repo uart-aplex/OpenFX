@@ -21,7 +21,6 @@
     <string name="close">關閉</string>
     <string name="ok">確定</string>
     <string name="loading">載入中…</string>
-    <string name="error">錯誤</string>
     <string name="retry">重試</string>
     <string name="done">完成</string>
     <string name="search">搜尋</string>
@@ -35,13 +34,11 @@
     <string name="nav_settings">設定</string>
 
     <!-- ===== 檔案瀏覽器 ===== -->
-    <string name="browser_title">OpenFX 檔案管理器</string>
     <string name="browser_selected_count">已選取 %d 項</string>
     <string name="browser_cancel_select">取消選取</string>
     <string name="browser_select_all">全選</string>
     <string name="browser_folder_empty">此資料夾為空</string>
     <string name="browser_internal_storage">內部儲存</string>
-    <string name="browser_sd_card">SD 卡</string>
 
     <!-- 檢視模式 -->
     <string name="view_grid">網格</string>
@@ -60,7 +57,6 @@
     <string name="action_new_folder">新增</string>
     <string name="action_bookmark">書籤</string>
     <string name="action_properties">屬性</string>
-    <string name="action_selected">已選取</string>
 
     <!-- 對話框 -->
     <string name="dialog_new_folder">新增資料夾</string>
@@ -89,93 +85,42 @@
 
     <!-- ===== 裝置配對 ===== -->
     <string name="device_scan_nearby">掃描附近</string>
-    <string name="device_paired">已配對</string>
     <string name="device_nearby_title">附近裝置</string>
-    <string name="device_count">%d 個裝置</string>
-    <string name="device_add_new">配對新裝置</string>
-    <string name="device_online">線上</string>
-    <string name="device_offline">離線</string>
-    <string name="device_not_paired">未配對</string>
-    <string name="device_wifi_direct">Wi-Fi Direct</string>
 
     <!-- 配對對話框 -->
-    <string name="pairing_title">配對 %s</string>
-    <string name="pairing_qr_code">QR Code</string>
-    <string name="pairing_pin">PIN 碼</string>
-    <string name="pairing_connecting">正在建立連線…</string>
-    <string name="pairing_qr_instruction">請在 %s 上開啟 OpenFX\n選擇「我要接收」後再進行連線</string>
-    <string name="pairing_pin_instruction">請在 %s 上輸入此 PIN 碼</string>
-    <string name="pairing_start">開始配對</string>
 
     <!-- 裝置控制 -->
     <string name="control_send_to_tv">傳檔到裝置</string>
-    <string name="control_download_from_tv">從裝置下載</string>
-    <string name="control_browse_tv">瀏覽裝置檔案</string>
-    <string name="control_play_on_tv">在裝置播放</string>
-    <string name="control_quick_actions">快速操作</string>
-    <string name="control_sync_photos">同步相簿到裝置</string>
-    <string name="control_sync_photos_desc">DCIM → 對方裝置:/Photos/</string>
-    <string name="control_sync_videos">同步影片到裝置</string>
-    <string name="control_sync_videos_desc">Movies → 對方裝置:/Movies/</string>
-    <string name="control_install_apk">傳送 APK 到裝置</string>
-    <string name="control_install_apk_desc">選擇 APK 檔案傳送到對方裝置</string>
-    <string name="device_connected">已連線</string>
 
     <!-- ===== 傳輸 ===== -->
     <string name="transfer_active">傳輸中</string>
-    <string name="transfer_completed">已完成</string>
     <string name="transfer_clear_all">清除全部</string>
     <string name="transfer_empty_title">目前沒有傳輸任務</string>
     <string name="transfer_empty_subtitle">在裝置頁面選擇裝置開始傳檔</string>
-    <string name="transfer_pause">暫停</string>
-    <string name="transfer_resume">繼續</string>
 
     <!-- ===== 設定 ===== -->
     <string name="settings_section_files">檔案管理</string>
     <string name="settings_show_hidden">顯示隱藏檔案</string>
     <string name="settings_show_hidden_desc">以 . 開頭的檔案和資料夾</string>
-    <string name="settings_default_path">預設儲存路徑</string>
     <string name="settings_default_view">預設檢視模式</string>
     <string name="settings_default_sort">預設排序方式</string>
-    <string name="settings_sort_name_asc">名稱 (升序)</string>
 
     <string name="settings_section_connection">裝置連線</string>
     <string name="settings_device_name">裝置名稱</string>
-    <string name="settings_wifi_direct_priority">Wi-Fi Direct 優先</string>
-    <string name="settings_wifi_direct_priority_desc">直連速度更快，不需要 AP</string>
-    <string name="settings_pairing_confirm">配對時需要確認</string>
-    <string name="settings_pairing_confirm_desc">新裝置連線前需要手動核可</string>
-    <string name="settings_auto_disconnect">自動斷線逾時</string>
-    <string name="settings_auto_disconnect_value">5 分鐘</string>
 
-    <string name="settings_section_security">安全性</string>
-    <string name="settings_encrypted_transfer">加密傳輸</string>
-    <string name="settings_encrypted_transfer_desc">使用 AES-256 加密所有 P2P 傳輸</string>
 
     <string name="settings_section_transfer">傳輸</string>
-    <string name="settings_concurrent_transfers">同時傳輸數量</string>
-    <string name="settings_buffer_size">緩衝區大小</string>
     <string name="settings_transfer_notify">傳輸完成通知</string>
-    <string name="settings_transfer_notify_desc">傳輸結束時發送通知</string>
-    <string name="settings_keep_timestamp">保留時間戳記</string>
-    <string name="settings_keep_timestamp_desc">複製時保留原始修改時間</string>
 
     <string name="settings_section_about">關於</string>
     <string name="settings_version">版本</string>
-    <string name="settings_version_value">0.1.0 (Alpha)</string>
     <string name="settings_source_code">原始碼</string>
-    <string name="settings_source_code_value">github.com/openfx</string>
     <string name="settings_license">授權條款</string>
-    <string name="settings_license_value">Apache License 2.0</string>
 
     <!-- ===== TV 首頁 ===== -->
     <string name="tv_quick_access">快速存取</string>
-    <string name="tv_recent_files">最近使用</string>
-    <string name="tv_connected_devices">已連線裝置</string>
     <string name="tv_usb_device">USB 裝置</string>
     <string name="tv_local_network">區域網路</string>
-    <string name="tv_phone_connect">手機連線</string>
-    <string name="tv_available">可連線</string>
     <string name="apps_installed">已安裝的 App</string>
     <string name="apps_send_installed">傳送已安裝的 App</string>
     <string name="apps_send_to">傳送到 %1$s</string>
